@@ -50,6 +50,8 @@ if (kind === 'service') {
     }
   };
   hookRequire();
+  g.createCustomImage = createCustomImage;
+  moveCanvasesIntoPages();
 } else {
   emulateDeviceScreen(host.device);
   installInput();
@@ -102,6 +104,62 @@ function hookRequire() {
   } catch {
     // 定义不了就算了，广告接口退回基础库原样（返回 undefined）
   }
+}
+
+/**
+ * type="2d" 和 webgl 画布：基础库在 devtools 平台把它们建在逻辑层文档的 body 里，开发者工具把逻辑层透明地叠在页面上显示，
+ * 画布于是盖住页面里的所有内容；真机上画布和页面元素一样参与层级。所以业务第一次取上下文时（还没开始画），
+ * 请宿主把画布搬进页面里对应的 wx-canvas（见 Host.placeCanvas）。之后基础库删除画布时仍从 body 里删，那时元素已经不在这里了
+ */
+function moveCanvasesIntoPages() {
+  const { getContext } = HTMLCanvasElement.prototype;
+  const { removeChild } = Node.prototype;
+  // 宿主认不出的（如离屏画布）只试一次
+  const tried = new WeakSet<HTMLCanvasElement>();
+
+  HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, ...args: unknown[]) {
+    if (this.parentNode === document.body && !tried.has(this)) {
+      tried.add(this);
+      host.placeCanvas(this, String(args[0]));
+    }
+    return (getContext as (...a: unknown[]) => unknown).apply(this, args);
+  } as typeof getContext;
+
+  HTMLBodyElement.prototype.removeChild = function <T extends Node>(this: HTMLBodyElement, child: T): T {
+    if (child.parentNode === this || !(child instanceof HTMLCanvasElement)) return removeChild.call(this, child) as T;
+    child.remove();
+    return child;
+  };
+}
+
+/**
+ * type="2d" 和 webgl 画布的 createImage，开发者工具提供的原生能力（__global.createCustomImage）。
+ * toUrl 把业务设置的 src 转成要加载的地址，代码包里的文件会带上开发者工具的 /__pageframe__/ 前缀；
+ * fromUrl 把它还原成业务读 src 时看到的值。
+ */
+function createCustomImage(toUrl: (src: string) => string, fromUrl: (url: string) => string): HTMLImageElement {
+  let url = '';
+  return new (class extends Image {
+    set src(value: string) {
+      url = toUrl(value);
+      super.src = loadableImageUrl(url);
+    }
+
+    get src() {
+      return fromUrl(url);
+    }
+  })();
+}
+
+/**
+ * 代码包里的文件由开发服务器在根路径提供。其他域名的图片经代理变成同源：直接加载的话画上去会污染画布，
+ * 之后读像素、导出都会失败；加 crossOrigin 又要对方返回 CORS 头，大多数图片服务器不返回。
+ * 不解析地址：格式不对的地址照样交给代理，加载失败走 onerror，和原生 Image 一样不在赋值时抛错
+ */
+function loadableImageUrl(url: string): string {
+  if (url.startsWith('/__pageframe__/')) return url.slice('/__pageframe__'.length);
+  if (/^https?:\/\//i.test(url) && !url.startsWith(location.origin + '/')) return `/__wxa__/proxy?url=${encodeURIComponent(url)}`;
+  return url;
 }
 
 function createBridge(): FrameBridge & Record<string, unknown> {

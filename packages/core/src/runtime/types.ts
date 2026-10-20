@@ -26,6 +26,8 @@ export interface HostApi {
   publish(kind: FrameKind, win: Window, event: string, data: unknown, webviewIds?: number[]): void;
   frameLoaded(kind: FrameKind, webviewId: number): void;
   reportError(kind: FrameKind, webviewId: number, error: unknown): void;
+  /** 把逻辑层建的 2d、webgl 画布放进页面里对应的 wx-canvas；认不出是哪个画布时（如离屏画布）留在原处。type 是 getContext 的类型 */
+  placeCanvas(canvas: HTMLCanvasElement, type: string): void;
   device: DeviceProfile;
 }
 

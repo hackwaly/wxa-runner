@@ -62,6 +62,20 @@ export class PageView {
     else this.pending.push(fn);
   }
 
+  /**
+   * 把逻辑层的画布放进这一页编号为 canvasNumber 的 wx-canvas，盖在它自己的 canvas 上（样式见 webviewHtml 的 .wxa-service-canvas）。
+   * 编号在 wx-canvas 的组件实例上，DOM 节点经 __wxElement 找到组件实例
+   */
+  placeCanvas(canvas: HTMLCanvasElement, canvasNumber: number): boolean {
+    const target = Array.from(this.win?.document.querySelectorAll('wx-canvas') ?? [])
+      .find(element => (element as any).__wxElement?._canvasNumber === canvasNumber);
+    const own = target?.querySelector(':scope > canvas');
+    if (!own) return false;
+    canvas.classList.add('wxa-service-canvas');
+    own.after(canvas);
+    return true;
+  }
+
   /** 页面样式里的 env(safe-area-inset-*) 构建时已改写成这些变量，见 rewriteSafeAreaInsets */
   setSafeAreaInsets(insets: SafeAreaInsets) {
     this.dispatch((_bridge, win) => {

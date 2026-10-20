@@ -3,9 +3,17 @@
  *
  * 旧版 canvas（canvas-id）的绘制指令由逻辑层发出、不指定目标页面；
  * 导出图片和拍照得到的临时文件要能直接作为 image 的 src 显示，也要能画到旧版 canvas 上。
+ *
+ * type="2d" 和 webgl 画布由基础库建在逻辑层的文档里，宿主把它们搬进页面里的 wx-canvas，和真机一样参与页面的层级。
+ * 用户看到的效果只有截图能验证。
  */
 
-import { afterAll, beforeAll, describe, it } from 'vitest';
+import http from 'http';
+import type { AddressInfo } from 'net';
+import type { Frame, Page } from 'playwright';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import zlib from 'zlib';
+import { png } from '../helpers';
 import { e2eReady, expectText, Runner, startRunner } from './runner';
 
 const CANVAS_WXML = `
@@ -189,5 +197,237 @@ describe.skipIf(!e2eReady)('画布与相机', () => {
     await expectText(frame, '#camera-state', 'ready');
     await frame.click('#shoot');
     await expectText(frame, '#photo', /^loaded [1-9]\d*x[1-9]\d*$/);
+  });
+});
+
+// 上面留出 300px，滚动 200px 后画布仍在屏幕里
+const BOARD_WXML = `
+<view style="height:300px"></view>
+<canvas type="2d" id="board" style="display:block;width:120px;height:80px"></canvas>
+<canvas type="webgl" id="gl" style="display:block;width:120px;height:80px"></canvas>
+<view id="drawn">{{drawn}}</view>
+<view style="height:2000px"></view>
+`;
+
+const BOARD_JS = `
+Page({
+  data: { drawn: '' },
+  onReady() {
+    const query = wx.createSelectorQuery();
+    query.select('#board').fields({ node: true });
+    query.select('#gl').fields({ node: true });
+    query.exec(([board, gl]) => {
+      const ctx = board.node.getContext('2d');
+      ctx.fillStyle = '#00ff00';
+      ctx.fillRect(0, 0, board.node.width, board.node.height);
+      const webgl = gl.node.getContext('webgl');
+      webgl.clearColor(0, 0, 1, 1);
+      webgl.clear(webgl.COLOR_BUFFER_BIT);
+      this.setData({ drawn: 'yes' });
+    });
+  }
+});
+`;
+
+// 组件里的画布涂成绿色，页面上一条 fixed 的红条横着盖住它的中间
+const LAYER_WXML = `
+<pad bind:drawn="onDrawn"></pad>
+<view id="cover" style="position:fixed;left:0;right:0;top:40px;height:40px;background:#ff0000"></view>
+<view id="drawn">{{drawn}}</view>
+`;
+
+const PAD_JS = `
+Component({
+  lifetimes: {
+    ready() {
+      this.createSelectorQuery().select('#pad').fields({ node: true }).exec(([res]) => {
+        const ctx = res.node.getContext('2d');
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(0, 0, res.node.width, res.node.height);
+        this.triggerEvent('drawn');
+      });
+    }
+  }
+});
+`;
+
+// 左半边画包内的红图，右半边画另一个域名上的蓝图，再从画布读回像素并导出；另有一张地址格式不对的图
+const IMAGES_WXML = `
+<canvas type="2d" id="pad" style="width:40px;height:20px"></canvas>
+<view id="package-pixel">{{packagePixel}}</view>
+<view id="remote-pixel">{{remotePixel}}</view>
+<view id="invalid">{{invalid}}</view>
+<view id="exported">{{exported}}</view>
+`;
+
+const IMAGES_JS = `
+Page({
+  data: { packagePixel: '', remotePixel: '', invalid: '', exported: '' },
+  onLoad(query) { this.remote = decodeURIComponent(query.remote); },
+  onReady() {
+    wx.createSelectorQuery().select('#pad').fields({ node: true }).exec(([res]) => {
+      const canvas = res.node;
+      canvas.width = 40;
+      canvas.height = 20;
+      const ctx = canvas.getContext('2d');
+      const draw = (src, x, key) => new Promise(resolve => {
+        const image = canvas.createImage();
+        image.onload = () => {
+          try {
+            ctx.drawImage(image, x, 0, 20, 20);
+            this.setData({ [key]: Array.from(ctx.getImageData(x + 10, 10, 1, 1).data).join(',') });
+          } catch (err) {
+            this.setData({ [key]: err.name });
+          }
+          resolve();
+        };
+        image.onerror = () => {
+          this.setData({ [key]: 'load error' });
+          resolve();
+        };
+        image.src = src;
+      });
+      Promise.all([
+        draw('/images/red.png', 0, 'packagePixel'),
+        draw(this.remote, 20, 'remotePixel'),
+        draw('http://', 0, 'invalid')
+      ]).then(() => wx.canvasToTempFilePath({
+        canvas,
+        success: r => this.setData({ exported: r.tempFilePath ? 'ok' : 'empty path' }),
+        fail: err => this.setData({ exported: 'fail ' + err.errMsg })
+      }));
+    });
+  }
+});
+`;
+
+type Point = { x: number; y: number };
+
+const COLORS: Record<string, [number, number, number]> = {
+  white: [255, 255, 255], red: [255, 0, 0], green: [0, 255, 0], blue: [0, 0, 255]
+};
+
+/** 1×1 截图里那个像素的颜色名，不在 COLORS 里时返回 r,g,b */
+function colorOf(shot: Buffer): string {
+  const chunks: Buffer[] = [];
+  for (let offset = 8; offset < shot.length;) {
+    const length = shot.readUInt32BE(offset);
+    if (shot.toString('ascii', offset + 4, offset + 8) === 'IDAT') chunks.push(shot.subarray(offset + 8, offset + 8 + length));
+    offset += length + 12;
+  }
+  // 只有一个像素，没有左边和上边的像素可参考，不管行首的过滤类型是什么，存的都是原值
+  const rgb = [...zlib.inflateSync(Buffer.concat(chunks)).subarray(1, 4)];
+  const name = Object.keys(COLORS).find(key => COLORS[key].every((value, i) => Math.abs(value - rgb[i]) <= 24));
+  return name || rgb.join(',');
+}
+
+describe.skipIf(!e2eReady)('2d 与 webgl 画布', () => {
+  let runner: Runner;
+  let remote: http.Server;
+  let remoteImage = '';
+
+  /** 宿主页面上这一点实际显示的颜色 */
+  const colorAt = async (point: Point) =>
+    colorOf(await runner.page.screenshot({ clip: { x: Math.round(point.x), y: Math.round(point.y), width: 1, height: 1 } }));
+  const waitForColor = (point: Point, color: string) =>
+    vi.waitFor(async () => expect(await colorAt(point)).toBe(color), { timeout: 3000 });
+  const centerOf = async (frame: Frame, selector: string): Promise<Point> => {
+    const box = (await frame.locator(selector).boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+  const openBoard = async () => {
+    const frame = await runner.open('/?path=pages/board/board');
+    await expectText(frame, '#drawn', 'yes');
+    return frame;
+  };
+  const navigate = (page: Page, action: 'navigateTo' | 'navigateBack') =>
+    page.evaluate(([name]) => (name === 'navigateTo'
+      ? window.__wxa_test_api__.navigateTo('/pages/blank/blank')
+      : window.__wxa_test_api__.navigateBack()), [action] as const);
+
+  beforeAll(async () => {
+    // 和开发服务器不同源，也不带 CORS 响应头
+    remote = http.createServer((_req, res) => {
+      res.setHeader('content-type', 'image/png');
+      res.end(png(20, 20, [0, 0, 255]));
+    });
+    await new Promise<void>(resolve => remote.listen(0, '127.0.0.1', resolve));
+    remoteImage = `http://127.0.0.1:${(remote.address() as AddressInfo).port}/blue.png`;
+
+    runner = await startRunner({
+      'app.json': { pages: ['pages/board/board', 'pages/blank/blank', 'pages/layer/layer', 'pages/images/images'] },
+      'pages/board/board.json': {},
+      'pages/board/board.wxml': BOARD_WXML,
+      'pages/board/board.js': BOARD_JS,
+      'pages/blank/blank.json': {},
+      'pages/blank/blank.wxml': '<view>blank</view>',
+      'pages/blank/blank.js': 'Page({});',
+      'pages/layer/layer.json': { usingComponents: { pad: '/components/pad/pad' } },
+      'pages/layer/layer.wxml': LAYER_WXML,
+      'pages/layer/layer.js': "Page({ data: { drawn: '' }, onDrawn() { this.setData({ drawn: 'yes' }); } });",
+      'components/pad/pad.json': { component: true },
+      'components/pad/pad.wxml': '<canvas type="2d" id="pad" style="display:block;width:120px;height:120px"></canvas>',
+      'components/pad/pad.js': PAD_JS,
+      'pages/images/images.json': {},
+      'pages/images/images.wxml': IMAGES_WXML,
+      'pages/images/images.js': IMAGES_JS,
+      'images/red.png': png(20, 20, [255, 0, 0])
+    });
+  });
+
+  afterAll(async () => {
+    await runner?.close();
+    remote?.close();
+  });
+
+  it('页面在 type="2d" 和 webgl 画布上画的内容，显示在页面上画布所在的位置', async () => {
+    const frame = await openBoard();
+    const board = await centerOf(frame, '#board');
+    await waitForColor(board, 'green');
+    await waitForColor(await centerOf(frame, '#gl'), 'blue');
+    // 画布右边还是页面本身
+    expect(await colorAt({ x: board.x + 100, y: board.y })).toBe('white');
+  });
+
+  it('用户滚动页面后，画布上的内容跟着画布一起移动', async () => {
+    const frame = await openBoard();
+    const before = await centerOf(frame, '#board');
+    await waitForColor(before, 'green');
+
+    await frame.evaluate(() => window.scrollTo(0, 200));
+    const after = await centerOf(frame, '#board');
+    expect(after.y).toBe(before.y - 200);
+    await waitForColor(after, 'green');
+    await waitForColor(before, 'white');
+  });
+
+  it('打开新页面后上一页的画布不再显示，返回后重新显示', async () => {
+    const frame = await openBoard();
+    const board = await centerOf(frame, '#board');
+    await waitForColor(board, 'green');
+
+    await navigate(runner.page, 'navigateTo');
+    await waitForColor(board, 'white');
+    await navigate(runner.page, 'navigateBack');
+    await waitForColor(board, 'green');
+  });
+
+  it('页面里的元素照常按层级盖在画布上：fixed 的浮层挡住组件里画布的中间一段，和真机一样', async () => {
+    const frame = await runner.open('/?path=pages/layer/layer');
+    await expectText(frame, '#drawn', 'yes');
+    const pad = (await frame.locator('wx-canvas').boundingBox())!;
+    const cover = (await frame.locator('#cover').boundingBox())!;
+    const x = pad.x + pad.width / 2;
+    await waitForColor({ x, y: pad.y + 20 }, 'green');
+    expect(await colorAt({ x, y: cover.y + cover.height / 2 })).toBe('red');
+    expect(await colorAt({ x, y: pad.y + 100 })).toBe('green');
+  });
+
+  it('canvas.createImage 加载包内图片和其他域名的网络图片，画到画布上后读得回像素，也能导出；地址格式不对时走 onerror，不在赋值时抛错', async () => {
+    const frame = await runner.open(`/?path=pages/images/images&remote=${encodeURIComponent(remoteImage)}`);
+    await expectText(frame, '#package-pixel', '255,0,0,255');
+    await expectText(frame, '#remote-pixel', '0,0,255,255');
+    await expectText(frame, '#invalid', 'load error');
+    await expectText(frame, '#exported', 'ok');
   });
 });

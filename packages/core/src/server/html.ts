@@ -118,6 +118,9 @@ export function webviewHtml(build: BuildResult, pagePath: string, webviewId: num
 <!-- 真机的滚动条是不占布局的浮层；桌面浏览器的常规滚动条和自定义 ::-webkit-scrollbar 会挤窄页面，一律隐藏。
      scrollbar-width 优先于 ::-webkit-scrollbar，页面样式不会再把滚动条加回来 -->
 <style>*{scrollbar-width:none}::-webkit-scrollbar{display:none}</style>
+<!-- 逻辑层建的 2d、webgl 画布搬进 wx-canvas 后铺满它（见 frame.ts 的 moveCanvasesIntoPages）。
+     基础库还会按逻辑层里的布局改它的位置和显隐，这里一律压住；触摸照常交给 wx-canvas 自己的 canvas -->
+<style>.wxa-service-canvas{position:absolute!important;left:0!important;top:0!important;width:100%!important;height:100%!important;visibility:inherit!important;pointer-events:none}</style>
 <script>var __wxConfig = ${toJs(wxConfig)};</script>
 <script src="/__wxa__/runtime/frame.js" data-kind="webview" data-webview-id="${id}"></script>
 <script src="/__baselib__/WAWebview.js"></script>

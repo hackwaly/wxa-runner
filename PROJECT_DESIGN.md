@@ -372,6 +372,16 @@ setup 和测试 API 的 `mock` 都在注册表这一层覆盖原生实现。
   网页内自己跳转时，同源网页报告新地址并触发 load，跨域网页读不到地址就不报；iframe 加载失败没有事件，binderror 不会触发。
   基础库拿到空的业务域名列表时会把 web-view 事件里的网页地址清空，所以拉取业务域名列表（`operateWXData` 的
   `webapi_getwxanetwork`）明确返回失败，基础库因此不做校验，等同开发者工具的「不校验业务域名」
+- **2d、webgl 画布**：基础库在 devtools 平台把这两种画布建在逻辑层文档的 body 里，按渲染层报来的位置（`canvasInserted` /
+  `canvasUpdated`）绝对定位、随页面滚动，开发者工具把逻辑层透明地叠在页面上显示，所以那里的画布盖住页面里的所有内容。
+  真机上画布和页面元素一样参与层级，宿主照真机做：业务第一次取上下文时（`getContext`，还没开始画），把画布元素搬进页面里对应的
+  `wx-canvas`，铺满它自己的 canvas。同源 iframe 之间移动元素，画布内容和已经拿到的上下文都不受影响。
+  逻辑层的画布元素上没有编号，基础库把「元素 → 编号」记在内部的 WeakMap 里（`WeakMap.prototype.set` 等内置方法被基础库锁住，拦不到），
+  宿主就给还没放好的同类型画布逐个发一条 top 带记号的 `canvasUpdated`，记号写到哪个元素上就是哪个编号，再用原来的位置发一次恢复（`Host.placeCanvas`）。
+  xr-frame 的画布不搬：基础库收到它的 `canvasUpdated` 会给 xr-frame 派发 resize，xr-frame 在 wxa-runner 里也没有验证过。
+  搬进页面后基础库仍会按逻辑层的布局改它的位置和显隐，渲染层用 `!important` 样式压住；删除时基础库还从逻辑层的 body 里删，`frame.ts` 兼容。
+  `canvas.createImage` 调开发者工具提供的 `__global.createCustomImage`（`frame.ts`）：代码包里的图片去掉开发者工具的 `/__pageframe__/` 前缀，
+  从开发服务器根路径加载；其他域名的图片经代理变成同源，画上去不污染画布，之后照样能读像素、导出
 - **临时文件**：canvas 导出、拍照、录像的结果（经 `base64ToTempFilePath`）、选中的图片、`downloadFile` 下载的文件都存到开发服务器，返回 http 地址。
   image、video 组件只原样使用 http(s) 地址，`blob:` 之类的地址会被当成页面相对路径。
   旧版 canvas 的 `drawImage` 正好相反：基础库把 http(s) 地址都当成网络图片直接跳过（只放行开发者工具的 `http://tmp/` 等），

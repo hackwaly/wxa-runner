@@ -47,6 +47,27 @@ export interface FrameError {
 
 const ROUTE_DONE_DELAY = 300;
 const PAGE_LOAD_TIMEOUT = 15000;
+/** 基础库建在逻辑层里、要搬进页面的画布类型；旧版 canvas-id 画布在渲染层里画 */
+const BINDING_CANVAS_TYPES = new Set(['2d', 'webgl', 'webgl2']);
+/** placeCanvas 探测用的 top，不会是真实位置。读回 style.top 时浏览器只保留 6 位有效数字，所以用位数少的整数 */
+const PROBE_TOP = -54321;
+
+interface CanvasBox {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+interface CanvasRecord {
+  webviewId: number;
+  type: string;
+  box: CanvasBox;
+  placed: boolean;
+}
+
+/** 渲染层的 canvasInserted / canvasUpdated / canvasRemoved 消息里的 data */
+type CanvasMessage = Partial<CanvasBox> & { canvasNumber: number; type?: string; isXrFrame?: boolean };
 
 export class Host implements HostApi {
   readonly device;
@@ -73,6 +94,8 @@ export class Host implements HostApi {
   private nextWebviewId = 1;
   private routeChain: Promise<unknown> = Promise.resolve();
   private routeListeners: Array<(page: PageView, openType: OpenType) => void> = [];
+  /** 渲染层报来的 2d、webgl 画布，按编号记下所在页面和最近的位置，供 placeCanvas 认出逻辑层的画布元素 */
+  private readonly canvases = new Map<number, CanvasRecord>();
 
   constructor(readonly info: AppInfo, root: HTMLElement) {
     this.device = info.device;
@@ -124,6 +147,31 @@ export class Host implements HostApi {
     this.appContext = win;
   }
 
+  /**
+   * 逻辑层的画布元素上没有编号，只能问基础库：给每个还没放好的同类型画布发一条 top 带记号的 canvasUpdated，
+   * 基础库把位置写到那个编号的元素上，记号落在这个元素上就是它；随后用原来的位置再发一次，恢复原样。
+   * 基础库只在类型与画布一致时才调到元素的 getContext，按类型筛选不会漏掉
+   */
+  placeCanvas(canvas: HTMLCanvasElement, type: string) {
+    const service = this.service;
+    if (!service) return;
+    const update = (canvasNumber: number, record: CanvasRecord, top: number) => service.bridge.__dispatchSub(
+      'canvasUpdated',
+      this.cloneForService({ data: { canvasNumber, ...record.box, top }, options: { timestamp: Date.now() } }),
+      record.webviewId
+    );
+    for (const [canvasNumber, record] of this.canvases) {
+      if (record.placed || record.type !== type) continue;
+      update(canvasNumber, record, PROBE_TOP);
+      const matched = canvas.style.top === `${PROBE_TOP}px`;
+      update(canvasNumber, record, record.box.top);
+      if (matched) {
+        record.placed = this.pages.get(record.webviewId)?.placeCanvas(canvas, canvasNumber) ?? false;
+        return;
+      }
+    }
+  }
+
   frameLoaded(kind: FrameKind, webviewId: number) {
     if (kind === 'service') this.serviceLoaded();
     else this.pages.get(webviewId)?.loaded();
@@ -151,10 +199,28 @@ export class Host implements HostApi {
     if (event === 'operateMapCallback' && this.mapOperations.receive(data)) return;
 
     const fromId = this.webviewIdOf(win);
+    this.trackCanvas(event, (data as { data?: CanvasMessage } | null)?.data, fromId);
     const service = this.service;
     if (!service) return;
     const payload = this.cloneForService(data);
     queueMicrotask(() => service.bridge.__dispatchSub(event, payload, fromId));
+  }
+
+  /**
+   * xr-frame 的画布不记：基础库收到它的 canvasUpdated 会派发 resize 给 xr-frame，探测会带来多余的 resize，
+   * 而 xr-frame 在 wxa-runner 里没有验证过，保持原样
+   */
+  private trackCanvas(event: string, data: CanvasMessage | undefined, webviewId: number) {
+    if (!data) return;
+    const record = this.canvases.get(data.canvasNumber);
+    if (event === 'canvasInserted' && data.type && BINDING_CANVAS_TYPES.has(data.type) && !data.isXrFrame) {
+      this.canvases.set(data.canvasNumber, { webviewId, type: data.type, box: { top: 0, left: 0, width: 0, height: 0, ...boxOf(data) }, placed: false });
+    } else if (event === 'canvasUpdated' && record) {
+      // 有的 canvasUpdated 只带宽高，没带的字段保留原值
+      record.box = { ...record.box, ...boxOf(data) };
+    } else if (event === 'canvasRemoved') {
+      this.canvases.delete(data.canvasNumber);
+    }
   }
 
   /** 不指定目标时发给所有页面：旧版 canvas 的绘制指令就是这样发的，由 canvasNumber 找到对应画布 */
@@ -340,6 +406,10 @@ export class Host implements HostApi {
     if (this.tabPages.get(page.path) === page) this.tabPages.delete(page.path);
     this.pages.delete(page.id);
     page.destroy();
+    // 页面直接关掉时渲染层不一定发 canvasRemoved
+    for (const [canvasNumber, record] of this.canvases) {
+      if (record.webviewId === page.id) this.canvases.delete(canvasNumber);
+    }
   }
 
   private activate(page: PageView, openType: OpenType) {
@@ -510,6 +580,15 @@ function withDrawableImages(message: any): unknown {
       })
     }
   };
+}
+
+/** 消息里带了的位置字段 */
+function boxOf(data: CanvasMessage): Partial<CanvasBox> {
+  const box: Partial<CanvasBox> = {};
+  for (const key of ['top', 'left', 'width', 'height'] as const) {
+    if (data[key] !== undefined) box[key] = data[key];
+  }
+  return box;
 }
 
 function stripHtml(path: string): string {
