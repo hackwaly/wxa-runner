@@ -302,12 +302,18 @@ function overrideUserAgent() {
  * 另外，基础库在元素滚动后 50ms 内会把触摸当作滑动、取消 tap。自动化测试常常是
  * 「滚动到元素 → 立刻点击」，而 scroll 事件要到下一帧才派发，所以按下时先等两帧
  * 让挂起的 scroll 事件派发完，刚滚动过的话再顺延到窗口之后。同一次按压的事件按原顺序派发。
+ *
+ * 按下后移出 TOUCH_SLOP 之前的 mousemove 不转成 touchmove（类似触屏的 touch slop）。swiper 等组件
+ * 按第一个 touchmove 的位移判断手势方向，鼠标刚拖动时常先抖出 1px 的竖向位移，直接转发的话横向拖动
+ * 会被判成竖向、整次拖动都被忽略。阈值小于基础库取消 tap 的 10px，点击和长按不受影响。
  */
 function installInput() {
   const SCROLL_TAP_GUARD = 80;
+  const TOUCH_SLOP = 8;
   let lastScroll = 0;
   let queue: Promise<void> = Promise.resolve();
   let target: EventTarget | null = null;
+  let start: { x: number; y: number } | null = null;
 
   document.addEventListener('scroll', () => {
     lastScroll = Date.now();
@@ -349,11 +355,17 @@ function installInput() {
     event.stopImmediatePropagation();
     if (event.button !== 0 || !event.target) return;
     target = event.target;
+    start = { x: event.clientX, y: event.clientY };
     fire('touchstart', event, target);
   }, true);
   window.addEventListener('mousemove', event => {
     event.stopImmediatePropagation();
-    if (target) fire('touchmove', event, target);
+    if (!target) return;
+    if (start) {
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) < TOUCH_SLOP) return;
+      start = null;
+    }
+    fire('touchmove', event, target);
   }, true);
   window.addEventListener('mouseup', event => {
     event.stopImmediatePropagation();

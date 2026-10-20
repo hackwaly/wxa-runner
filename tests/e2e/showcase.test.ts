@@ -8,7 +8,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { Browser, chromium, Frame, Page } from 'playwright';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DevServer } from '../../packages/core/src/server/DevServer';
 import { EXAMPLES, REPO_ROOT } from '../helpers';
 import { CHROME, chromeLaunchOptions, e2eReady } from './runner';
@@ -205,6 +205,24 @@ describe.skipIf(!e2eReady)('showcase 示例', () => {
     } finally {
       await plain.close();
     }
+  });
+
+  it('用鼠标横向拖动 swiper 能翻页，按下后先抖出的 1px 竖向位移不会让拖动被当成竖向滑动', async () => {
+    const frame = await open('/?path=pages/gesture/gesture');
+    const swiper = frame.locator('wx-swiper');
+    await swiper.scrollIntoViewIfNeeded();
+    const box = (await swiper.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x + 75, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 75, y + 1);
+    await page.mouse.move(x - 75, y + 1, { steps: 10 });
+    await page.mouse.up();
+    await vi.waitFor(async () => {
+      const logs = await page.evaluate(() => (window.__wxa_test_api__.pageData()!.logs as { text: string }[]).map(line => line.text));
+      expect(logs).toContainEqual(expect.stringContaining('change {"current":1,'));
+    });
   });
 
   it('通过 ?path= 直接打开指定页面，Storage 可以从测试中读取', async () => {
