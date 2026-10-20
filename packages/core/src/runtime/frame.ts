@@ -306,6 +306,7 @@ function overrideUserAgent() {
  * 按下后移出 TOUCH_SLOP 之前的 mousemove 不转成 touchmove（类似触屏的 touch slop）。swiper 等组件
  * 按第一个 touchmove 的位移判断手势方向，鼠标刚拖动时常先抖出 1px 的竖向位移，直接转发的话横向拖动
  * 会被判成竖向、整次拖动都被忽略。阈值小于基础库取消 tap 的 10px，点击和长按不受影响。
+ * 没移出阈值就松手时，先补一个到松手位置的 touchmove，slider 微调、画短笔画这类小幅拖动不会丢。
  */
 function installInput() {
   const SCROLL_TAP_GUARD = 80;
@@ -370,6 +371,11 @@ function installInput() {
   window.addEventListener('mouseup', event => {
     event.stopImmediatePropagation();
     if (!target) return;
+    if (start && (event.clientX !== start.x || event.clientY !== start.y)) {
+      fire('touchmove', event, target);
+      // movable-view 等组件在下一帧才应用位移，同一帧里就收到 touchend 的话这段位移会被丢掉
+      queue = queue.then(nextFrame);
+    }
     fire('touchend', event, target);
     target = null;
   }, true);

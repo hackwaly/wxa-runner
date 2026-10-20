@@ -280,7 +280,9 @@ document.dispatchEvent(new CustomEvent("generateFuncReady", {
 5. **鼠标 → 触摸**：页面只应收到触摸事件。基础库在部分版本/平台上会自己把鼠标或 pointer 事件转换为触摸，
    和我们的转换叠加会触发两次 tap，所以在 window 捕获阶段最先拦下鼠标类事件再统一转换。
    另外基础库在元素滚动后 50ms 内会取消 tap，自动化测试的「滚动到元素 → 立刻点击」会因此失效，
-   转换时先等两帧让 scroll 事件派发完，必要时顺延
+   转换时先等两帧让 scroll 事件派发完，必要时顺延。
+   swiper 等组件只看第一个 touchmove 判断手势方向，鼠标刚拖动时的 1px 抖动会让横向拖动被当成竖向，
+   所以按下后移出 8px 之前的 mousemove 不转发（小于基础库取消 tap 的 10px）；没移出就松手时补一个 touchmove，小幅拖动不丢
 6. **内置组件样式提前注入**：基础库在文档没加载完时把内置组件样式（`wx-view` 的 display、`wx-canvas` 的默认尺寸等）
    推迟到 `window.onload` 注入。开发者工具在文档加载完后才注入基础库，那边是立即注入；这里基础库随页面同步加载，
    首屏渲染早于 onload，canvas 这类挂载时测量尺寸的组件会量错。所以加载完成前赋给 `window.onload` 的回调改为立即执行

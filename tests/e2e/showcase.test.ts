@@ -225,6 +225,23 @@ describe.skipIf(!e2eReady)('showcase 示例', () => {
     });
   });
 
+  it('用鼠标拖动 movable-view 不到 8px 就松手，这段小位移也会生效', async () => {
+    const frame = await open('/?path=pages/gesture/gesture');
+    const movable = frame.locator('wx-movable-view');
+    await movable.scrollIntoViewIfNeeded();
+    const box = (await movable.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 5, y, { steps: 5 });
+    await page.mouse.up();
+    await vi.waitFor(async () => {
+      const { move } = (await page.evaluate(() => window.__wxa_test_api__.pageData()))!;
+      expect(move).toMatch(/^x=5 y=0 /);
+    });
+  });
+
   it('通过 ?path= 直接打开指定页面，Storage 可以从测试中读取', async () => {
     const frame = await open('/?path=pages/detail/detail&id=7');
     expect(await frame.textContent('#detail-id')).toBe('id = 7');
