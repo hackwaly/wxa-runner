@@ -90,7 +90,7 @@ Page({
       sourceType: ['album'],
       success: res => this.setData({
         result: 'chooseVideo ' + res.size + ' ' + res.duration.toFixed(1) + 's ' + res.width + 'x' + res.height,
-        video: { tempFilePath: res.tempFilePath }
+        video: { tempFilePath: res.tempFilePath, thumbTempFilePath: res.thumbTempFilePath }
       }),
       fail: err => this.report(err)
     });
@@ -314,16 +314,16 @@ describe.skipIf(!e2eReady)('选图、预览与保存图片', () => {
       expect(positions.filter(position => position > 0.5 && position < 1.5)).toEqual([]);
     });
 
-    it('图片和视频都可选但不允许混选时，用户同时选了两种，只返回和第一个文件同类的', async () => {
+    it('图片和视频都可选但不允许混选时，用户同时选了两种，和开发者工具一样只返回其中的视频', async () => {
       const frame = await runner.open(ALBUM_PAGE);
 
-      const chooser = await pickFiles(() => frame.click('#choose-image-or-video'), [CLIP, AVATAR]);
+      const chooser = await pickFiles(() => frame.click('#choose-image-or-video'), [AVATAR, CLIP]);
 
       expect(await chooser.element().getAttribute('accept')).toBe('image/*,video/*');
       await expectText(frame, '#result', `video video:${CLIP.buffer.length}`);
     });
 
-    it('mediaType 带 mix 时用户可以同时选图片和视频，返回 type 为 mix', async () => {
+    it('mediaType 带 mix 时用户可以同时选图片和视频；和开发者工具一样，只选了图片 type 也是 mix', async () => {
       const frame = await runner.open(ALBUM_PAGE);
 
       await pickFiles(() => frame.click('#choose-mix'), [AVATAR, CLIP]);
@@ -331,11 +331,15 @@ describe.skipIf(!e2eReady)('选图、预览与保存图片', () => {
       await expectText(frame, '#result', `mix image:${AVATAR.buffer.length},video:${CLIP.buffer.length}`);
       await expectText(frame, '#photo', 'loaded 40x30');
       await expectText(frame, '#thumb', 'loaded 64x48');
+
+      await pickFiles(() => frame.click('#choose-mix'), [ICON]);
+
+      await expectText(frame, '#result', `mix image:${ICON.buffer.length}`);
     });
   });
 
   describe('chooseVideo', () => {
-    it('用户用 chooseVideo 选了一个视频后，页面拿到大小、时长和宽高，临时路径能直接用 video 组件播放', async () => {
+    it('用户用 chooseVideo 选了一个视频后，页面拿到大小、时长、宽高和缩略图，临时路径能直接用 video 组件播放', async () => {
       const frame = await runner.open(ALBUM_PAGE);
 
       const chooser = await pickFiles(() => frame.click('#call-choose-video'), [CLIP]);
@@ -343,6 +347,7 @@ describe.skipIf(!e2eReady)('选图、预览与保存图片', () => {
       expect(await chooser.element().getAttribute('accept')).toBe('video/*');
       expect(chooser.isMultiple()).toBe(false);
       await expectText(frame, '#result', `chooseVideo ${CLIP.buffer.length} 2.0s 64x48`);
+      await expectText(frame, '#thumb', 'loaded 64x48');
       await frame.click('#play-video');
       await expectText(frame, '#video-ended', 'yes');
     });

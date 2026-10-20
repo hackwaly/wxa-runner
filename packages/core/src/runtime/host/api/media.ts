@@ -28,6 +28,7 @@ const SOURCES: Source[] = ['camera', 'album'];
 const SOURCE_LABELS: Record<Source, string> = { camera: '拍摄', album: '从手机相册选择' };
 const DEFAULT_COUNT = 9;
 const MEDIA_KINDS: MediaKind[] = ['image', 'video'];
+const FIRST_FRAME_TIMEOUT = 1000;
 
 const countOf = (args: { count?: number }) => Math.max(1, Number(args.count) || DEFAULT_COUNT);
 
@@ -72,22 +73,21 @@ export function createMediaApis(
       if (!picked) return fail(api, 'cancel');
 
       const kindOf = (file: File): MediaKind => kinds.length === 1 ? kinds[0] : file.type.startsWith('video/') ? 'video' : 'image';
-      // 不允许混选时，真机上选了图片就不能再选视频（反之亦然），这里只留和第一个文件同类的
-      const files = (mix ? picked : picked.filter(file => kindOf(file) === kindOf(picked[0]))).slice(0, countOf(args));
-      const tempFiles = await Promise.all(files.map(async file => {
-        if (kindOf(file) === 'image') return { tempFilePath: await saveImage(file), size: file.size, fileType: 'image' };
-        const { thumb, ...video } = await saveVideo(file);
-        return { ...video, thumbTempFilePath: thumb ? await saveTempFile(thumb, 'jpg') : '', fileType: 'video' };
-      }));
-      const types = new Set(tempFiles.map(file => file.fileType));
-      return ok(api, { type: types.size > 1 ? 'mix' : tempFiles[0].fileType, tempFiles });
+      // 不允许混选时和开发者工具一样：选了视频就只要视频
+      const videos = picked.filter(file => kindOf(file) === 'video');
+      const files = (mix || !videos.length ? picked : videos).slice(0, countOf(args));
+      const tempFiles = await Promise.all(files.map(async file => kindOf(file) === 'video'
+        ? { ...await saveVideo(file), fileType: 'video' }
+        : { tempFilePath: await saveImage(file), size: file.size, fileType: 'image' }));
+      // 允许混选时开发者工具总是返回 mix，不看实际选了什么
+      return ok(api, { type: mix ? 'mix' : tempFiles[0].fileType, tempFiles });
     },
 
     chooseVideo: async (args, { api }) => {
       const file = (await pickFiles({ sourceType: args.sourceType, count: 1 }, 'video/*'))?.[0];
       if (!file) return fail(api, 'cancel');
-      const { thumb, ...video } = await saveVideo(file);
-      return ok(api, video);
+      // 文档没列 thumbTempFilePath，开发者工具也会返回
+      return ok(api, await saveVideo(file));
     },
 
     // 基础库已经把 current 换成了 urls 里的地址；也兼容直接传下标
@@ -121,13 +121,14 @@ export function createMediaApis(
   };
 }
 
-/** 存成临时文件，同时读出时长（秒）、宽高和第一帧（jpg，chooseMedia 用作缩略图）；浏览器解码不了的视频这些都为空 */
+/** 存成临时文件，同时读出时长（秒）、宽高和缩略图（第一帧）；浏览器解码不了的视频这些都为空 */
 async function saveVideo(file: File) {
   const [tempFilePath, { duration, width, height, thumb }] = await Promise.all([
     saveTempFile(file, tempFileType(file.name, file.type, 'mp4')),
     readVideo(file)
   ]);
-  return { tempFilePath, size: file.size, duration, height, width, thumb };
+  const thumbTempFilePath = thumb ? await saveTempFile(thumb, 'jpg') : '';
+  return { tempFilePath, size: file.size, duration, height, width, thumbTempFilePath };
 }
 
 async function readVideo(file: File): Promise<{ duration: number; width: number; height: number; thumb: Blob | null }> {
@@ -137,22 +138,32 @@ async function readVideo(file: File): Promise<{ duration: number; width: number;
   video.src = URL.createObjectURL(file);
   try {
     await new Promise((resolve, reject) => {
-      video.addEventListener('loadeddata', resolve, { once: true });
+      video.addEventListener('loadedmetadata', resolve, { once: true });
       video.addEventListener('error', reject, { once: true });
     });
     const { videoWidth: width, videoHeight: height } = video;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    canvas.getContext('2d')!.drawImage(video, 0, 0);
-    const thumb = width && height ? await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg')) : null;
     // MediaRecorder 录的 webm 不带时长，读出来是 Infinity
-    return { duration: Number.isFinite(video.duration) ? video.duration : 0, width, height, thumb };
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    return { duration, width, height, thumb: width && height ? await firstFrame(video) : null };
   } catch {
     return { duration: 0, width: 0, height: 0, thumb: null };
   } finally {
     URL.revokeObjectURL(video.src);
   }
+}
+
+/** 第一帧存成 jpg。有的浏览器不播放就不加载画面，也不报错，等 FIRST_FRAME_TIMEOUT 还没有画面就为 null */
+async function firstFrame(video: HTMLVideoElement): Promise<Blob | null> {
+  const loaded = video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA || await Promise.race([
+    new Promise<boolean>(resolve => video.addEventListener('loadeddata', () => resolve(true), { once: true })),
+    new Promise<boolean>(resolve => setTimeout(() => resolve(false), FIRST_FRAME_TIMEOUT))
+  ]);
+  if (!loaded) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d')!.drawImage(video, 0, 0);
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
 }
 
 /** @throws 文件不存在时 */

@@ -295,6 +295,8 @@ export class DevServer {
         return;
       }
       res.type(path.extname(req.params.name));
+      // 临时文件保存后不会改写，文件名就能作 ETag，分段和完整响应一致，也不用每次对整个文件算摘要
+      res.setHeader('ETag', `"${req.params.name}"`);
       // 支持分段请求，video 组件播放临时文件时才能跳转（不支持时浏览器认为视频不能跳转，seek 不起作用）
       res.setHeader('Accept-Ranges', 'bytes');
       const ranges = req.range(data.length);
@@ -306,8 +308,7 @@ export class DevServer {
       if (Array.isArray(ranges) && ranges.type === 'bytes' && ranges.length === 1) {
         const { start, end } = ranges[0];
         res.status(206).setHeader('Content-Range', `bytes ${start}-${end}/${data.length}`);
-        res.setHeader('Content-Length', end - start + 1);
-        res.end(data.subarray(start, end + 1));
+        res.send(data.subarray(start, end + 1));
         return;
       }
       res.send(data);

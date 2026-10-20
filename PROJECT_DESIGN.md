@@ -392,8 +392,9 @@ setup 和测试 API 的 `mock` 都在注册表这一层覆盖原生实现。
 - **选图和视频**：「从手机相册选择」和「拍摄」都打开浏览器的文件选择框（拍摄带 `capture`，手机浏览器上会打开相机）。
   和真机一样，两种来源都可选时先弹菜单。浏览器只允许在用户点击后的几秒内打开文件选择框（页面里的点击也算，会传到宿主页），
   没有经过点击就调用时也先弹菜单，用户点菜单就是一次点击；否则选择框打不开，回调永远不来。
-  选视频时用 `<video>` 读出时长和宽高，`chooseMedia` 还截第一帧作缩略图，浏览器解码不了的格式这几项为空；
-  不允许混选（`mediaType` 没有 `mix`）时只保留和第一个文件同类的，真机上选了一种就不能再选另一种。
+  选视频时用 `<video>` 读出时长和宽高，截第一帧作缩略图，浏览器解码不了的格式这几项为空。
+  这些规则和开发者工具一致：不允许混选（`mediaType` 没有 `mix`）时选了视频就只要视频；允许混选时 `type` 总是 `mix`；
+  chooseVideo 也返回 `thumbTempFilePath`；chooseMedia 选的图片不带宽高。
   `previewImage` 是宿主的全屏预览层，`saveImageToPhotosAlbum` 让浏览器下载这张图片
 - **音频（InnerAudioContext）**：3.5.8 起平台是 devtools 时基础库用 Web Audio 播放，先把音频读成 ArrayBuffer。
   网络音频经带 `__skipDomainCheck__` 的内部请求下载，宿主按请求的形状（`responseType` 为 `arraybuffer` 且带 `enableCache`，
