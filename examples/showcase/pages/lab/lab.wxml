@@ -1,0 +1,25 @@
+<view class="card">
+  <text class="hint">每个页面在开发者工具和浏览器里各走一遍，对照显示效果和底部的事件日志</text>
+</view>
+<view class="card" wx:for="{{groups}}" wx:for-item="group" wx:key="title">
+  <text class="title">{{group.title}}</text>
+  <navigator wx:for="{{group.items}}" wx:key="url" url="{{item.url}}" class="entry" hover-class="entry-hover">
+    <view class="entry-name">{{item.name}}</view>
+    <view class="entry-desc">{{item.desc}}</view>
+  </navigator>
+</view>
+<view class="card">
+  <text class="title">tabBar API</text>
+  <text class="hint">badge 加在「我的」（index 2），红点加在「首页」（index 0）</text>
+  <view class="btns">
+    <button size="mini" bindtap="setBadge">setTabBarBadge</button>
+    <button size="mini" bindtap="removeBadge">removeTabBarBadge</button>
+    <button size="mini" bindtap="showRedDot">showTabBarRedDot</button>
+    <button size="mini" bindtap="hideRedDot">hideTabBarRedDot</button>
+    <button size="mini" bindtap="hideTabBar">hideTabBar</button>
+    <button size="mini" bindtap="showTabBar">showTabBar</button>
+    <button size="mini" bindtap="toggleStyle">setTabBarStyle</button>
+    <button size="mini" bindtap="toggleItem">setTabBarItem</button>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

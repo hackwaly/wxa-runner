@@ -1,0 +1,12 @@
+<!-- 占位撑出和面板一样的高度，页面内容才能滚到面板上方 -->
+<view class="placeholder"></view>
+<view class="panel">
+  <view class="head">
+    <text>事件日志（新的在上）</text>
+    <text class="clear" bindtap="clear">清空</text>
+  </view>
+  <scroll-view scroll-y class="lines">
+    <view wx:if="{{!logs.length}}" class="empty">还没有事件</view>
+    <view wx:for="{{logs}}" wx:key="id" class="line">{{item.text}}</view>
+  </scroll-view>
+</view>

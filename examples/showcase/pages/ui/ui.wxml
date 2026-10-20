@@ -1,0 +1,40 @@
+<view class="card">
+  <text class="title">toast 与 loading</text>
+  <view class="btns">
+    <button size="mini" data-icon="success" bindtap="toast">success</button>
+    <button size="mini" data-icon="error" bindtap="toast">error</button>
+    <button size="mini" data-icon="loading" bindtap="toast">loading</button>
+    <button size="mini" data-icon="none" bindtap="toast">none</button>
+    <button size="mini" bindtap="toastLongText">长文字</button>
+    <button size="mini" bindtap="toastImage">自定义图标</button>
+    <button size="mini" bindtap="toastMask">mask</button>
+    <button size="mini" bindtap="hideToast">hideToast</button>
+    <button size="mini" bindtap="loading">showLoading</button>
+  </view>
+</view>
+<view class="card">
+  <text class="title">modal 与 actionSheet</text>
+  <view class="btns">
+    <button size="mini" bindtap="modal">showModal</button>
+    <button size="mini" bindtap="modalNoCancel">不带取消</button>
+    <button size="mini" bindtap="modalEditable">editable</button>
+    <button size="mini" bindtap="actionSheet">showActionSheet</button>
+  </view>
+</view>
+<view class="card">
+  <text class="title">导航栏</text>
+  <view class="btns">
+    <button size="mini" bindtap="setTitle">setNavigationBarTitle</button>
+    <button size="mini" bindtap="setNavColor">setNavigationBarColor</button>
+    <button size="mini" bindtap="navLoading">导航栏 loading 2 秒</button>
+  </view>
+</view>
+<view class="card">
+  <text class="title">下拉刷新</text>
+  <text class="hint">下拉页面或点 startPullDownRefresh 都会触发 onPullDownRefresh，1 秒后停止。setBackgroundColor 改的是下拉时露出的背景</text>
+  <view class="btns">
+    <button size="mini" bindtap="startPullDownRefresh">startPullDownRefresh</button>
+    <button size="mini" bindtap="setBackground">setBackgroundColor</button>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

@@ -1,0 +1,42 @@
+<view class="card">
+  <text class="title">InnerAudioContext</text>
+  <text class="hint">包内音频依次是 do、mi、sol、高音 do，各 1 秒，seek(2) 应从 sol 开始</text>
+  <view class="btns">
+    <button wx:for="{{sources}}" wx:key="src" size="mini" type="{{index === current ? 'primary' : 'default'}}" data-index="{{index}}" bindtap="selectSource">{{item.name}}</button>
+  </view>
+  <view class="field">进度（onTimeUpdate）：{{position}} / {{duration}} 秒</view>
+  <view class="btns">
+    <button size="mini" bindtap="play">play</button>
+    <button size="mini" bindtap="pause">pause</button>
+    <button size="mini" bindtap="stop">stop</button>
+    <button size="mini" bindtap="seek">seek(2)</button>
+    <button size="mini" bindtap="toggleLoop">loop: {{loop}}</button>
+    <button size="mini" bindtap="cycleVolume">volume: {{volume}}</button>
+    <button size="mini" bindtap="cycleRate">playbackRate: {{rate}}</button>
+  </view>
+</view>
+<view class="card">
+  <text class="title">audio 组件（包内 mp3）</text>
+  <audio
+    id="audio-component"
+    src="/assets/scale.mp3"
+    poster="/assets/logo.png"
+    name="音阶"
+    author="wxa-runner"
+    controls
+    bindplay="onEvent"
+    bindpause="onEvent"
+    bindended="onEvent"
+    binderror="onEvent"
+  ></audio>
+</view>
+<view class="card">
+  <text class="title">背景音频（BackgroundAudioManager，网络 mp3）</text>
+  <view class="field">进度：{{backgroundPosition}}</view>
+  <view class="btns">
+    <button size="mini" bindtap="playBackground">播放</button>
+    <button size="mini" bindtap="pauseBackground">pause</button>
+    <button size="mini" bindtap="stopBackground">stop</button>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

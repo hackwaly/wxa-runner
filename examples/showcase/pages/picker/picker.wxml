@@ -1,0 +1,40 @@
+<view class="card">
+  <text class="title">picker</text>
+  <picker mode="selector" range="{{fruits}}" value="{{fruitIndex}}" header-text="选一种水果" data-key="fruitIndex" bindchange="onChange" bindcancel="onEvent">
+    <view class="item"><text>selector（带 header-text）</text><text class="value">{{fruits[fruitIndex]}}</text></view>
+  </picker>
+  <picker mode="selector" range="{{cities}}" range-key="name" value="{{cityIndex}}" data-key="cityIndex" bindchange="onChange" bindcancel="onEvent">
+    <view class="item"><text>selector（range-key）</text><text class="value">{{cities[cityIndex].name}}</text></view>
+  </picker>
+  <picker mode="multiSelector" range="{{multiArray}}" value="{{multiIndex}}" data-key="multiIndex" bindchange="onChange" bindcolumnchange="onColumnChange" bindcancel="onEvent">
+    <view class="item"><text>multiSelector（联动）</text><text class="value">{{multiArray[0][multiIndex[0]]}} / {{multiArray[1][multiIndex[1]]}}</text></view>
+  </picker>
+  <picker mode="time" value="{{time}}" start="09:00" end="21:00" data-key="time" bindchange="onChange" bindcancel="onEvent">
+    <view class="item"><text>time（09:00 – 21:00）</text><text class="value">{{time}}</text></view>
+  </picker>
+  <picker mode="date" value="{{date}}" start="2020-01-01" end="2030-12-31" data-key="date" bindchange="onChange" bindcancel="onEvent">
+    <view class="item"><text>date</text><text class="value">{{date}}</text></view>
+  </picker>
+  <picker mode="date" fields="month" value="{{month}}" data-key="month" bindchange="onChange" bindcancel="onEvent">
+    <view class="item"><text>date fields="month"</text><text class="value">{{month}}</text></view>
+  </picker>
+  <picker mode="region" value="{{region}}" custom-item="全部" data-key="region" bindchange="onChange" bindcancel="onEvent">
+    <view class="item"><text>region（custom-item）</text><text class="value">{{region[0]}} {{region[1]}} {{region[2]}}</text></view>
+  </picker>
+  <picker mode="region" level="city" value="{{cityRegion}}" data-key="cityRegion" bindchange="onChange" bindcancel="onEvent">
+    <view class="item"><text>region level="city"</text><text class="value">{{cityRegion[0]}} {{cityRegion[1]}}</text></view>
+  </picker>
+  <picker mode="region" level="sub-district" value="{{streetRegion}}" data-key="streetRegion" bindchange="onChange" bindcancel="onEvent">
+    <view class="item"><text>region level="sub-district"</text><text class="value">{{streetRegion[2]}} {{streetRegion[3]}}</text></view>
+  </picker>
+</view>
+<view class="card">
+  <text class="title">picker-view</text>
+  <view class="field">{{years[pickerViewValue[0]]}} 年 {{months[pickerViewValue[1]]}} 月 {{days[pickerViewValue[2]]}} 日</view>
+  <picker-view class="picker-view" indicator-style="height: 80rpx;" value="{{pickerViewValue}}" data-key="pickerViewValue" bindchange="onChange" bindpickstart="onEvent" bindpickend="onEvent">
+    <picker-view-column><view wx:for="{{years}}" wx:key="*this" class="column-item">{{item}} 年</view></picker-view-column>
+    <picker-view-column><view wx:for="{{months}}" wx:key="*this" class="column-item">{{item}} 月</view></picker-view-column>
+    <picker-view-column><view wx:for="{{days}}" wx:key="*this" class="column-item">{{item}} 日</view></picker-view-column>
+  </picker-view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

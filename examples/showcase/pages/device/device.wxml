@@ -1,0 +1,20 @@
+<view class="card">
+  <text class="title">设备与窗口信息</text>
+  <view wx:for="{{info}}" wx:key="key" class="info-row">
+    <text class="info-key">{{item.key}}</text>
+    <text class="info-value">{{item.value}}</text>
+  </view>
+</view>
+<view class="card">
+  <text class="title">同步接口（日志里是返回值）</text>
+  <view class="btns">
+    <button wx:for="{{syncApis}}" wx:key="*this" size="mini" data-api="{{item}}" bindtap="callSyncApi">{{item}}</button>
+  </view>
+</view>
+<view wx:for="{{groups}}" wx:for-item="group" wx:key="title" class="card">
+  <text class="title">{{group.title}}</text>
+  <view class="btns">
+    <button wx:for="{{group.apis}}" wx:key="*this" size="mini" data-api="{{item}}" bindtap="callApi">{{item}}</button>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

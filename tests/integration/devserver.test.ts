@@ -40,10 +40,12 @@ describe.skipIf(!ready)('DevServer', () => {
   });
 
   it('app-info 返回页面、基础库版本和 __wxConfig', async () => {
+    const appJson = JSON.parse(fs.readFileSync(path.join(EXAMPLES, 'showcase/app.json'), 'utf8'));
     const info = await (await get('/__wxa__/app-info.json')).json();
-    expect(info.pages).toEqual(['pages/index/index', 'pages/detail/detail', 'pages/mine/mine']);
+    expect(info.pages).toEqual(appJson.pages);
     expect(info.baseLibVersion).toBe(server.baseLib.version);
-    expect(info.wxConfig.tabBar.list.map((item: any) => item.pagePath)).toEqual(['pages/index/index.html', 'pages/mine/mine.html']);
+    expect(info.wxConfig.tabBar.list.map((item: any) => item.pagePath))
+      .toEqual(appJson.tabBar.list.map((item: any) => `${item.pagePath}.html`));
   });
 
   it('逻辑层按顺序加载桥、基础库、业务模块和 bootstrap，并注入启动页面', async () => {

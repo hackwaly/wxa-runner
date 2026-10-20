@@ -1,0 +1,16 @@
+<view class="card">
+  <text class="title">本页是第 {{instance}} 个实例</text>
+  <text class="hint">日志里的 #n 是实例编号。离开再回来、或者开新实例，看两边生命周期的顺序是否一致</text>
+  <view class="field">页面栈：{{stack}}</view>
+</view>
+<view class="card">
+  <text class="title">路由</text>
+  <view class="btns">
+    <button wx:for="{{routes}}" wx:key="name" size="mini" data-method="{{item.method}}" data-url="{{item.url}}" bindtap="go">{{item.name}}</button>
+  </view>
+  <text class="hint">下面这些应该失败：</text>
+  <view class="btns">
+    <button wx:for="{{invalidRoutes}}" wx:key="name" size="mini" type="warn" data-method="{{item.method}}" data-url="{{item.url}}" bindtap="go">{{item.name}}</button>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

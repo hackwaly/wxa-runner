@@ -1,0 +1,46 @@
+<view class="card">
+  <text class="title">选图与预览</text>
+  <text class="hint">点缩略图预览；还没选图时 previewImage 预览两张网络图片</text>
+  <view class="btns">
+    <button size="mini" bindtap="chooseImage">chooseImage</button>
+    <button size="mini" bindtap="chooseMediaImage">chooseMedia（图片）</button>
+    <button size="mini" bindtap="chooseMediaVideo">chooseMedia（视频）</button>
+    <button size="mini" bindtap="preview">previewImage</button>
+  </view>
+  <view class="thumbs">
+    <image wx:for="{{chosen}}" wx:key="*this" class="thumb" src="{{item}}" mode="aspectFill" data-index="{{index}}" bindtap="preview" />
+  </view>
+</view>
+<view class="card">
+  <text class="title">图片信息与保存到相册</text>
+  <view class="btns">
+    <button size="mini" data-from="package" bindtap="imageInfo">getImageInfo 包内</button>
+    <button size="mini" data-from="network" bindtap="imageInfo">getImageInfo 网络</button>
+    <button size="mini" data-from="chosen" bindtap="imageInfo">getImageInfo 所选</button>
+    <button size="mini" bindtap="saveToAlbum">saveImageToPhotosAlbum</button>
+  </view>
+</view>
+<view class="card">
+  <text class="title">下载与保存文件</text>
+  <view class="btns">
+    <button size="mini" bindtap="download">downloadFile</button>
+    <button size="mini" bindtap="fileInfo">getFileInfo</button>
+    <button size="mini" bindtap="saveFile">saveFile</button>
+    <button size="mini" bindtap="savedFileList">getSavedFileList</button>
+    <button size="mini" bindtap="removeSavedFile">removeSavedFile</button>
+  </view>
+  <view wx:if="{{downloaded}}" class="field">临时文件：{{downloaded}}</view>
+  <image wx:if="{{downloaded}}" class="preview" src="{{downloaded}}" mode="aspectFit" bindload="onEvent" binderror="onEvent" />
+  <view wx:if="{{saved}}" class="field">保存的文件：{{saved}}</view>
+  <image wx:if="{{saved}}" class="preview" src="{{saved}}" mode="aspectFit" bindload="onEvent" binderror="onEvent" />
+</view>
+<view class="card">
+  <text class="title">image 的 mode（包内的正方形图片，框是 300×180rpx）</text>
+  <view class="modes">
+    <view wx:for="{{modes}}" wx:key="*this" class="mode">
+      <image class="mode-image" src="/assets/logo.png" mode="{{item}}" />
+      <view class="mode-name">{{item}}</view>
+    </view>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

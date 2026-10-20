@@ -1,0 +1,26 @@
+<view class="card">
+  <text class="title">type="2d"</text>
+  <text class="hint">可以在画布上用手指（鼠标）画线</text>
+  <canvas id="canvas2d" type="2d" class="canvas" disable-scroll bindtouchstart="onTouchStart" bindtouchmove="onTouchMove"></canvas>
+  <view class="btns">
+    <button size="mini" bindtap="draw2d">重画</button>
+    <button size="mini" bindtap="export2d">canvasToTempFilePath</button>
+  </view>
+  <image wx:if="{{exported2d}}" class="exported" src="{{exported2d}}" mode="aspectFit" bindload="onEvent" binderror="onEvent" />
+</view>
+<view class="card">
+  <text class="title">canvas-id（旧版接口）</text>
+  <text class="hint">右上角是 drawImage 画的包内图片</text>
+  <canvas canvas-id="legacy" class="canvas"></canvas>
+  <view class="btns">
+    <button size="mini" bindtap="drawLegacy">重画</button>
+    <button size="mini" bindtap="exportLegacy">canvasToTempFilePath</button>
+  </view>
+  <image wx:if="{{exportedLegacy}}" class="exported" src="{{exportedLegacy}}" mode="aspectFit" bindload="onEvent" binderror="onEvent" />
+</view>
+<view class="card">
+  <text class="title">type="webgl"</text>
+  <text class="hint">绿底上一个黄色三角形</text>
+  <canvas id="webgl" type="webgl" class="canvas"></canvas>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

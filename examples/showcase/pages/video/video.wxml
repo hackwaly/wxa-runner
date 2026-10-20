@@ -1,0 +1,56 @@
+<video
+  id="player"
+  class="player"
+  src="{{src}}"
+  title="showcase 视频"
+  controls="{{controls}}"
+  muted="{{muted}}"
+  loop="{{loop}}"
+  object-fit="{{objectFit}}"
+  danmu-list="{{danmuList}}"
+  enable-danmu
+  danmu-btn
+  show-mute-btn
+  bindplay="onEvent"
+  bindpause="onEvent"
+  bindended="onEvent"
+  bindtimeupdate="onTimeUpdate"
+  bindwaiting="onEvent"
+  binderror="onEvent"
+  bindloadedmetadata="onEvent"
+  bindfullscreenchange="onEvent"
+  bindcontrolstoggle="onEvent"
+  bindseekcomplete="onEvent"
+>
+  <cover-view class="cover">cover-view</cover-view>
+</video>
+<view class="card">
+  <text class="title">视频源</text>
+  <text class="hint">包内视频画面里的数字是秒数，方便核对 seek 和进度</text>
+  <view class="btns">
+    <button wx:for="{{sources}}" wx:key="src" size="mini" type="{{index === current ? 'primary' : 'default'}}" data-index="{{index}}" bindtap="selectSource">{{item.name}}</button>
+  </view>
+  <view class="field">进度（timeupdate）：{{position}} / {{duration}} 秒</view>
+</view>
+<view class="card">
+  <text class="title">VideoContext</text>
+  <view class="btns">
+    <button size="mini" bindtap="play">play</button>
+    <button size="mini" bindtap="pause">pause</button>
+    <button size="mini" bindtap="stop">stop</button>
+    <button size="mini" bindtap="seek">seek(3)</button>
+    <button size="mini" bindtap="cycleRate">playbackRate: {{rate}}</button>
+    <button size="mini" bindtap="fullScreen">全屏，3 秒后退出</button>
+    <button size="mini" bindtap="sendDanmu">sendDanmu</button>
+  </view>
+</view>
+<view class="card">
+  <text class="title">属性</text>
+  <view class="btns">
+    <button size="mini" data-key="controls" bindtap="toggle">controls: {{controls}}</button>
+    <button size="mini" data-key="muted" bindtap="toggle">muted: {{muted}}</button>
+    <button size="mini" data-key="loop" bindtap="toggle">loop: {{loop}}</button>
+    <button size="mini" bindtap="cycleObjectFit">object-fit: {{objectFit}}</button>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

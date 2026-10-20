@@ -1,0 +1,12 @@
+.pad { height: 160rpx; margin-bottom: 16rpx; display: flex; align-items: center; justify-content: center; background: #e6f7ee; border-radius: 8rpx; }
+.outer { display: flex; padding: 16rpx; background: #f0f0f0; border-radius: 8rpx; }
+.inner { flex: 1; margin: 0 8rpx; padding: 24rpx 0; text-align: center; background: #fff; border-radius: 8rpx; }
+.scroll { height: 360rpx; background: #fafafa; }
+.row { padding: 20rpx; border-bottom: 1px solid #eee; }
+.scroll-x { display: flex; flex-direction: row; white-space: nowrap; }
+.chip { flex-shrink: 0; width: 100rpx; height: 100rpx; margin-right: 16rpx; line-height: 100rpx; text-align: center; background: #e6f4ff; border-radius: 8rpx; }
+.swiper { height: 240rpx; margin-bottom: 16rpx; }
+.slide { height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 48rpx; }
+.area { width: 100%; height: 360rpx; background: #fafafa; overflow: hidden; }
+.movable { width: 140rpx; height: 140rpx; line-height: 140rpx; text-align: center; color: #fff; background: #07c160; border-radius: 12rpx; }
+.tall { height: 1200rpx; padding-top: 24rpx; color: #999; background: linear-gradient(#fff, #e6f7ee); }

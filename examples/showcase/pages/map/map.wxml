@@ -1,0 +1,34 @@
+<map
+  id="map"
+  class="map"
+  latitude="{{latitude}}"
+  longitude="{{longitude}}"
+  scale="15"
+  markers="{{markers}}"
+  polyline="{{polyline}}"
+  circles="{{circles}}"
+  show-location
+  bindtap="onEvent"
+  bindmarkertap="onEvent"
+  bindcallouttap="onEvent"
+  bindlabeltap="onEvent"
+  bindregionchange="onEvent"
+  bindupdated="onEvent"
+  bindpoitap="onEvent"
+  bindanchorpointtap="onEvent"
+></map>
+<view class="card">
+  <text class="title">MapContext</text>
+  <view class="btns">
+    <button size="mini" data-method="getCenterLocation" bindtap="callMap">getCenterLocation</button>
+    <button size="mini" data-method="getRegion" bindtap="callMap">getRegion</button>
+    <button size="mini" data-method="getScale" bindtap="callMap">getScale</button>
+    <button size="mini" bindtap="moveToCurrent">moveToLocation 当前位置</button>
+    <button size="mini" bindtap="moveToTower">moveToLocation 广州塔</button>
+    <button size="mini" bindtap="includePoints">includePoints</button>
+    <button size="mini" bindtap="translateMarker">translateMarker</button>
+    <button size="mini" bindtap="addMarker">addMarkers</button>
+    <button size="mini" bindtap="removeMarker">removeMarkers</button>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

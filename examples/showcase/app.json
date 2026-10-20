@@ -2,7 +2,21 @@
   "pages": [
     "pages/index/index",
     "pages/detail/detail",
-    "pages/mine/mine"
+    "pages/mine/mine",
+    "pages/lab/lab",
+    "pages/video/video",
+    "pages/audio/audio",
+    "pages/camera/camera",
+    "pages/image/image",
+    "pages/canvas/canvas",
+    "pages/map/map",
+    "pages/form/form",
+    "pages/picker/picker",
+    "pages/gesture/gesture",
+    "pages/ui/ui",
+    "pages/device/device",
+    "pages/route/route",
+    "pages/webview/webview"
   ],
   "window": {
     "navigationBarTitleText": "wxa-runner showcase",
@@ -15,11 +29,17 @@
     "selectedColor": "#07c160",
     "list": [
       { "pagePath": "pages/index/index", "text": "首页" },
+      { "pagePath": "pages/lab/lab", "text": "能力" },
       { "pagePath": "pages/mine/mine", "text": "我的" }
     ]
   },
   "usingComponents": {
-    "counter": "/components/counter/counter"
+    "counter": "/components/counter/counter",
+    "log-panel": "/components/log-panel/log-panel"
   },
+  "permission": {
+    "scope.userLocation": { "desc": "演示 getLocation 和地图的当前位置" }
+  },
+  "requiredPrivateInfos": ["getLocation", "chooseLocation"],
   "style": "v2"
 }

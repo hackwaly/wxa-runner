@@ -1,0 +1,6 @@
+.input { height: 72rpx; padding: 0 16rpx; margin-bottom: 16rpx; border: 1px solid #ddd; border-radius: 8rpx; }
+.textarea { width: auto; min-height: 72rpx; padding: 12rpx 16rpx; border: 1px solid #ddd; border-radius: 8rpx; }
+.row { display: flex; justify-content: space-between; align-items: center; padding: 12rpx 0; }
+.options { display: flex; flex-wrap: wrap; padding: 8rpx 0; }
+.option { margin-right: 32rpx; }
+.editor { height: 240rpx; padding: 12rpx 16rpx; margin-bottom: 16rpx; border: 1px solid #ddd; border-radius: 8rpx; }

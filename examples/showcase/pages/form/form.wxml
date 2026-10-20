@@ -1,0 +1,52 @@
+<form bindsubmit="onEvent" bindreset="onEvent">
+  <view class="card">
+    <text class="title">input</text>
+    <input name="text" class="input" placeholder="text：input / focus / blur / confirm" confirm-type="search" bindinput="onEvent" bindfocus="onEvent" bindblur="onEvent" bindconfirm="onEvent" bindkeyboardheightchange="onEvent" />
+    <input name="number" class="input" type="number" placeholder="type=number" bindinput="onEvent" />
+    <input name="digit" class="input" type="digit" placeholder="type=digit" bindinput="onEvent" />
+    <input name="idcard" class="input" type="idcard" placeholder="type=idcard" bindinput="onEvent" />
+    <input name="password" class="input" password placeholder="password" bindinput="onEvent" />
+    <input name="limited" class="input" maxlength="5" placeholder="maxlength=5" bindinput="onEvent" />
+    <input class="input" disabled value="disabled 的输入框" />
+  </view>
+  <view class="card">
+    <text class="title">textarea</text>
+    <textarea name="textarea" class="textarea" auto-height placeholder="auto-height：换行触发 linechange" bindinput="onEvent" bindlinechange="onEvent" />
+  </view>
+  <view class="card">
+    <text class="title">switch / slider</text>
+    <view class="row"><text>switch</text><switch name="switch" bindchange="onEvent" /></view>
+    <view class="row"><text>switch type="checkbox"</text><switch name="switchCheckbox" type="checkbox" bindchange="onEvent" /></view>
+    <view class="row"><text>slider（changing 中：{{sliderValue}}）</text></view>
+    <slider name="slider" min="0" max="100" step="5" value="30" show-value bindchange="onEvent" bindchanging="onSliderChanging" />
+  </view>
+  <view class="card">
+    <text class="title">checkbox / radio</text>
+    <checkbox-group name="fruits" class="options" bindchange="onEvent">
+      <label wx:for="{{fruits}}" wx:key="value" class="option"><checkbox value="{{item.value}}" checked="{{item.checked}}" />{{item.name}}</label>
+    </checkbox-group>
+    <radio-group name="size" class="options" bindchange="onEvent">
+      <label wx:for="{{sizes}}" wx:key="value" class="option"><radio value="{{item.value}}" checked="{{item.checked}}" />{{item.name}}</label>
+    </radio-group>
+  </view>
+  <view class="card">
+    <text class="title">form</text>
+    <text class="hint">提交时日志里是各字段的值</text>
+    <view class="btns">
+      <button size="mini" type="primary" form-type="submit">提交</button>
+      <button size="mini" form-type="reset">重置</button>
+    </view>
+  </view>
+</form>
+<view class="card">
+  <text class="title">editor</text>
+  <editor id="editor" class="editor" placeholder="富文本编辑器" bindready="onEditorReady" bindstatuschange="onEvent" bindfocus="onEvent" bindblur="onEvent" />
+  <view class="btns">
+    <button size="mini" bindtap="editorBold">加粗</button>
+    <button size="mini" bindtap="editorHeader">标题</button>
+    <button size="mini" bindtap="editorImage">insertImage</button>
+    <button size="mini" bindtap="editorContents">getContents</button>
+    <button size="mini" bindtap="editorClear">clear</button>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

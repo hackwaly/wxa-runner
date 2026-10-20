@@ -1,0 +1,7 @@
+.thumbs { display: flex; flex-wrap: wrap; }
+.thumb { width: 180rpx; height: 180rpx; margin: 0 16rpx 16rpx 0; }
+.preview { display: block; width: 100%; height: 300rpx; background: #f0f0f0; }
+.modes { display: flex; flex-wrap: wrap; justify-content: space-between; }
+.mode { width: 300rpx; margin-bottom: 24rpx; }
+.mode-image { width: 300rpx; height: 180rpx; background: #e6f7ee; }
+.mode-name { font-size: 24rpx; color: #999; }

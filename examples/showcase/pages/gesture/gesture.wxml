@@ -1,0 +1,69 @@
+<view class="card">
+  <text class="title">点击与长按</text>
+  <view class="pad" bindtap="onEvent" bindlongpress="onEvent" bindtouchstart="onTouch" bindtouchend="onTouch" bindtouchcancel="onTouch">在这里点击或长按</view>
+  <text class="hint">冒泡：点 bindtap 的内层，外层也收到；点 catchtap 的内层，外层收不到</text>
+  <view id="outer" class="outer" bindtap="onOuterTap">
+    <view id="bind-inner" class="inner" bindtap="onInnerTap">bindtap</view>
+    <view id="catch-inner" class="inner" catchtap="onInnerTap">catchtap</view>
+  </view>
+</view>
+<view class="card">
+  <text class="title">scroll-view 纵向</text>
+  <text class="hint">顶部下拉触发自定义下拉刷新</text>
+  <scroll-view
+    scroll-y
+    class="scroll"
+    scroll-into-view="{{intoView}}"
+    scroll-with-animation
+    refresher-enabled
+    refresher-triggered="{{refreshing}}"
+    bindscroll="onScroll"
+    bindscrolltoupper="onEvent"
+    bindscrolltolower="onEvent"
+    bindrefresherrefresh="onRefresh"
+  >
+    <view wx:for="{{rows}}" wx:key="*this" id="row-{{item}}" class="row">第 {{item}} 行</view>
+  </scroll-view>
+  <view class="field">scrollTop：{{scrollTop}}</view>
+  <view class="btns">
+    <button size="mini" data-target="row-20" bindtap="scrollIntoView">scroll-into-view 第 20 行</button>
+    <button size="mini" data-target="row-1" bindtap="scrollIntoView">回到第 1 行</button>
+  </view>
+</view>
+<view class="card">
+  <text class="title">scroll-view 横向</text>
+  <scroll-view scroll-x enable-flex class="scroll-x">
+    <view wx:for="{{rows}}" wx:key="*this" class="chip">{{item}}</view>
+  </scroll-view>
+</view>
+<view class="card">
+  <text class="title">swiper</text>
+  <swiper class="swiper" indicator-dots circular autoplay="{{autoplay}}" interval="2000" bindchange="onEvent" bindanimationfinish="onEvent">
+    <swiper-item wx:for="{{colors}}" wx:key="*this">
+      <view class="slide" style="background: {{item}}">{{index + 1}}</view>
+    </swiper-item>
+  </swiper>
+  <view class="btns">
+    <button size="mini" bindtap="toggleAutoplay">autoplay: {{autoplay}}</button>
+  </view>
+</view>
+<view class="card">
+  <text class="title">movable-view</text>
+  <text class="hint">可以拖动，松手后有惯性，可以拖出边界再弹回；双指可以缩放</text>
+  <movable-area class="area" scale-area>
+    <movable-view class="movable" direction="all" inertia out-of-bounds scale scale-min="0.5" scale-max="2" bindchange="onMove" bindscale="onEvent">拖我</movable-view>
+  </movable-area>
+  <view class="field">{{move}}</view>
+</view>
+<view class="card">
+  <text class="title">页面滚动</text>
+  <view class="field">onPageScroll：{{pageScrollTop}}</view>
+  <view class="btns">
+    <button size="mini" data-target="bottom" bindtap="pageScrollTo">pageScrollTo 底部</button>
+  </view>
+  <view class="tall">继续往下滚，滚到底触发 onReachBottom</view>
+  <view id="page-bottom" class="btns">
+    <button size="mini" data-target="top" bindtap="pageScrollTo">pageScrollTo 顶部</button>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

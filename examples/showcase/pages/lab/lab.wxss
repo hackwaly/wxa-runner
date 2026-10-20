@@ -1,0 +1,5 @@
+.entry { padding: 20rpx 0; border-bottom: 1px solid #eee; }
+.entry:last-child { border-bottom: none; }
+.entry-hover { background: #f0f0f0; }
+.entry-name { font-size: 30rpx; }
+.entry-desc { margin-top: 6rpx; font-size: 24rpx; color: #999; }
