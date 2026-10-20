@@ -11,7 +11,7 @@ packages/
   core/        @open-wxa/wxa-runner-core       项目构建、开发服务器、浏览器端运行时
   cli/         wxa-runner                      命令行（包名不带 scope，npx wxa-runner 直接可用）
   playwright/  @open-wxa/wxa-runner-playwright Playwright fixture
-examples/      showcase（覆盖主要功能）、hello-world、tabbar、custom-tabbar（自定义 tabBar）、subpackages（分包预下载和分包异步化）
+examples/      showcase（覆盖主要功能）、hello-world、custom-tabbar（自定义 tabBar）、subpackages（分包预下载和分包异步化）
 tests/         unit / integration / e2e，playwright（用 fixture 写的用例）
 docs/          使用文档，同时是 VitePress 文档站点的源文件
 ```

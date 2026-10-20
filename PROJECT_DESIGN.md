@@ -127,7 +127,7 @@ wxa-runner/
 │           └── server.ts              # 开发服务器参数，路径相对 Playwright 配置文件
 │
 ├── docs/                              # 使用文档，同时是 VitePress 文档站点
-├── examples/                          # showcase（覆盖主要功能）、hello-world、tabbar
+├── examples/                          # showcase（覆盖主要功能）、hello-world、custom-tabbar、subpackages
 └── tests/
     ├── unit/                          # 解包、编译、项目解析、构建、文件监听、运行时纯逻辑、原生 API
     ├── integration/                   # DevServer 路由、网络代理
