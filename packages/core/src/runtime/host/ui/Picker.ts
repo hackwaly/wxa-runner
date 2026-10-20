@@ -1,6 +1,8 @@
 /**
  * 选择器弹层：从底部弹出，若干列可滚动的选项，中间一行是选中项
  *
+ * 外观照开发者工具模拟 iPhone 时的 WeUI picker。header-text 不显示：官方文档注明它仅安卓可用，
+ * 开发者工具模拟 iPhone 时也不显示。
  * 用户可以滚动到某一项，也可以直接点它。列之间的联动（日期的天数、省市区）不在这里，
  * 由调用方在 onColumnChange 里用 setColumn 换掉后面的列。
  */
@@ -13,7 +15,6 @@ export interface PickerOptions {
   columns: string[][];
   /** 每列初始选中的下标 */
   current: number[];
-  headerText?: string;
   /** 用户改变某列的选中项后调用；setColumn 引起的变化不会触发 */
   onColumnChange?: (column: number, index: number) => void;
 }
@@ -41,10 +42,10 @@ export function openPicker(container: HTMLElement, options: PickerOptions): Pick
   const header = element('div', 'wxa-picker-header');
   const cancel = element('button', 'wxa-picker-cancel', '取消');
   const confirm = element('button', 'wxa-picker-confirm', '确定');
-  header.append(cancel, element('div', 'wxa-picker-title', options.headerText || ''), confirm);
+  header.append(cancel, confirm);
   const body = element('div', 'wxa-picker-body');
   const columns = options.columns.map((_, index) => new PickerColumn(next => options.onColumnChange?.(index, next)));
-  body.append(...columns.map(column => column.el), element('div', 'wxa-picker-indicator'));
+  body.append(...columns.map(column => column.el), element('div', 'wxa-picker-mask'), element('div', 'wxa-picker-indicator'));
   sheet.append(header, body);
   layer.append(mask, sheet);
   container.appendChild(layer);

@@ -84,7 +84,8 @@ describe.skipIf(!e2eReady)('picker 选择器', () => {
   it('用户在选择器里选中第二项并确定，页面收到 change，选择器关闭', async () => {
     frame = await runner.open('/?path=pages/picker/picker');
     await open('#fruit');
-    await expect(sheet().locator('.wxa-picker-title').textContent()).resolves.toBe('选水果');
+    // header-text 仅安卓可用，模拟 iPhone 时和开发者工具一样不显示
+    expect(await sheet().getByText('选水果').count()).toBe(0);
     expect(await items(0)).toEqual(['苹果', '香蕉', '橙子']);
 
     await pick(0, '香蕉');
@@ -107,7 +108,7 @@ describe.skipIf(!e2eReady)('picker 选择器', () => {
     expect((await items(0)).at(-1)).toBe('2025年');
     expect((await items(2)).length).toBe(31);
 
-    await pick(1, '2月');
+    await pick(1, '02月');
     await vi.waitFor(async () => expect((await items(2)).length).toBe(29));
     await confirm();
     await expectText(frame, '#date-result', '2024-02-29');

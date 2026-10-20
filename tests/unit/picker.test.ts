@@ -44,9 +44,6 @@ function fakePickerUser() {
     get selected() {
       return current.map((index, column) => columns[column][index]);
     },
-    get headerText() {
-      return options?.headerText;
-    },
     pick(column: number, label: string) {
       const index = columns[column].indexOf(label);
       if (index < 0) throw new Error(`第 ${column} 列没有「${label}」，只有：${columns[column].join(' ')}`);
@@ -99,9 +96,8 @@ const STREETS = [
 describe('普通选择器', () => {
   it('用户选中第二项并确定，返回该项的下标', async () => {
     const { user, call } = setup();
-    const result = call('showPickerView', { array: ['苹果', '香蕉', '橙子'], current: 0, headerText: '选水果' });
+    const result = call('showPickerView', { array: ['苹果', '香蕉', '橙子'], current: 0 });
     expect(user.columns).toEqual([['苹果', '香蕉', '橙子']]);
-    expect(user.headerText).toBe('选水果');
 
     user.pick(0, '香蕉');
     user.confirm();
@@ -151,11 +147,11 @@ describe('日期选择器', () => {
   const date = (current: string, extra: object = {}) =>
     ({ mode: 'date', fields: 'day', current, range: { start: '', end: '' }, ...extra });
 
-  it('按天选择时显示年、月、日三列，确定后得到补零的日期', async () => {
+  it('按天选择时显示年、月、日三列，月和日补零显示（与开发者工具一致），确定后得到补零的日期', async () => {
     const { user, call } = setup();
     const result = call('showDatePickerView', date('2024-1-5'));
     expect(user.columns.length).toBe(3);
-    expect(user.selected).toEqual(['2024年', '1月', '5日']);
+    expect(user.selected).toEqual(['2024年', '01月', '05日']);
 
     user.confirm();
     await expect(result).resolves.toEqual({ errMsg: 'showDatePickerView:ok', value: '2024-01-05' });
@@ -166,9 +162,9 @@ describe('日期选择器', () => {
     const result = call('showDatePickerView', date('2024-01-31'));
     expect(user.columns[2].length).toBe(31);
 
-    user.pick(1, '2月');
+    user.pick(1, '02月');
     expect(user.columns[2].length).toBe(29);
-    expect(user.selected).toEqual(['2024年', '2月', '29日']);
+    expect(user.selected).toEqual(['2024年', '02月', '29日']);
 
     user.pick(0, '2023年');
     expect(user.columns[2].length).toBe(28);
@@ -180,13 +176,13 @@ describe('日期选择器', () => {
     const { user, call } = setup();
     const result = call('showDatePickerView', date('2019-06-01', { range: { start: '2020-03-15', end: '2021-02-10' } }));
     expect(user.columns[0]).toEqual(['2020年', '2021年']);
-    expect(user.columns[1][0]).toBe('3月');
+    expect(user.columns[1][0]).toBe('03月');
     expect(user.columns[2][0]).toBe('15日');
-    expect(user.selected).toEqual(['2020年', '3月', '15日']);
+    expect(user.selected).toEqual(['2020年', '03月', '15日']);
 
     user.pick(0, '2021年');
-    expect(user.columns[1]).toEqual(['1月', '2月']);
-    expect(user.selected).toEqual(['2021年', '2月', '10日']);
+    expect(user.columns[1]).toEqual(['01月', '02月']);
+    expect(user.selected).toEqual(['2021年', '02月', '10日']);
     user.confirm();
     await expect(result).resolves.toMatchObject({ value: '2021-02-10' });
   });
@@ -194,7 +190,7 @@ describe('日期选择器', () => {
   it('按月选择只有年、月两列，结果为 YYYY-MM；按年选择只有一列', async () => {
     const { user, call } = setup();
     const month = call('showDatePickerView', date('2024-03', { fields: 'month' }));
-    expect(user.selected).toEqual(['2024年', '3月']);
+    expect(user.selected).toEqual(['2024年', '03月']);
     user.confirm();
     await expect(month).resolves.toMatchObject({ value: '2024-03' });
 

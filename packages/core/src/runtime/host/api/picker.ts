@@ -45,11 +45,10 @@ export function createPickerApis({ showPicker, emitToWebview, loadRegionData }: 
   };
 
   /** 弹出列之间有联动的选择器：用户改了某列后，后面各列按 model 重新生成 */
-  const showCascade = (model: CascadeModel, headerText?: string) => {
+  const showCascade = (model: CascadeModel) => {
     const session: PickerSession = showPicker({
       columns: model.columns(),
       current: model.current(),
-      headerText,
       onColumnChange(column, index) {
         model.select(column, index);
         const columns = model.columns();
@@ -64,8 +63,7 @@ export function createPickerApis({ showPicker, emitToWebview, loadRegionData }: 
     showPickerView: async (args, { api }) => {
       const result = await showPicker({
         columns: [labels(args.array)],
-        current: [Number(args.current) || 0],
-        headerText: args.headerText
+        current: [Number(args.current) || 0]
       }).result;
       return result ? ok(api, { index: result[0] }) : fail(api, 'cancel');
     },
@@ -74,7 +72,6 @@ export function createPickerApis({ showPicker, emitToWebview, loadRegionData }: 
       const session = showPicker({
         columns: (args.array || []).map(labels),
         current: (args.current || []).map((index: unknown) => Number(index) || 0),
-        headerText: args.headerText,
         onColumnChange: (column, current) => emitToWebview(webviewId, 'onMultiPickerViewChange', { column, current })
       });
       multiPicker = session;
@@ -91,7 +88,7 @@ export function createPickerApis({ showPicker, emitToWebview, loadRegionData }: 
 
     showDatePickerView: async (args, { api }) => {
       const model = new DateCascade(args.mode === 'time' ? 'time' : 'date', args.fields, args.range || {}, String(args.current || ''));
-      const result = await showCascade(model, args.headerText);
+      const result = await showCascade(model);
       return result ? ok(api, { value: model.value() }) : fail(api, 'cancel');
     },
 
@@ -202,7 +199,7 @@ class DateCascade implements CascadeModel {
 
   private label(column: number, value: number): string {
     if (this.mode === 'time') return pad(value);
-    return value + ['年', '月', '日'][column];
+    return column === 0 ? value + '年' : pad(value) + ['月', '日'][column - 1];
   }
 }
 

@@ -2,8 +2,8 @@
 export const DEVICE_BEZEL = 13;
 export const STAGE_PADDING = 24;
 export const STAGE_GAP = 16;
-/** 选择器每一行的高度，一列显示 5 行，选中项在中间 */
-export const PICKER_ITEM_HEIGHT = 34;
+/** 选择器每一行的高度，一列显示 5 行，选中项在中间（与开发者工具的 WeUI picker 相同） */
+export const PICKER_ITEM_HEIGHT = 48;
 
 export const SHELL_CSS = `
 html, body { margin: 0; height: 100%; background: radial-gradient(120% 80% at 50% 0%, #f6f7f9 0%, #e6e9ee 100%); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
@@ -58,18 +58,23 @@ html, body { margin: 0; height: 100%; background: radial-gradient(120% 80% at 50
 .wxa-actionsheet-alert { padding: 16px; font-size: 13px; color: #888; text-align: center; background: #fff; }
 .wxa-actionsheet button { display: block; width: 100%; height: 56px; border: 0; border-top: 1px solid rgba(0,0,0,.06); background: #fff; font-size: 17px; cursor: pointer; }
 .wxa-actionsheet .wxa-actionsheet-cancel { margin-top: 8px; border-top: 0; }
-.wxa-picker { position: absolute; left: 0; right: 0; bottom: 0; padding-bottom: var(--wxa-safe-bottom, 0px); background: #fff; border-radius: 12px 12px 0 0; pointer-events: auto; user-select: none; }
-.wxa-picker-header { display: flex; align-items: center; height: 56px; padding: 0 8px; }
-.wxa-picker-header button { flex: none; border: 0; background: none; padding: 8px 12px; font-size: 17px; cursor: pointer; }
-.wxa-picker-cancel { color: rgba(0,0,0,.9); }
-.wxa-picker-confirm { color: #07c160; font-weight: 600; }
-.wxa-picker-title { flex: 1; overflow: hidden; font-size: 17px; font-weight: 600; text-align: center; white-space: nowrap; text-overflow: ellipsis; }
-.wxa-picker-body { position: relative; display: flex; height: ${PICKER_ITEM_HEIGHT * 5}px; margin: 0 16px 24px; }
+.wxa-picker-layer .wxa-mask.is-dim { background: rgba(0,0,0,.6); animation: wxa-fade-in .3s ease forwards; }
+.wxa-picker { position: absolute; left: 0; right: 0; bottom: 0; padding-bottom: var(--wxa-safe-bottom, 0px); background: #fff; pointer-events: auto; user-select: none; animation: wxa-slide-up .3s ease forwards; }
+.wxa-picker-header { position: relative; display: flex; padding: 16px; font-size: 17px; line-height: 1.4; }
+.wxa-picker-header::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; border-bottom: 1px solid rgba(0,0,0,.1); transform: scaleY(.5); transform-origin: 0 100%; }
+.wxa-picker-header button { flex: 1; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.wxa-picker-cancel { color: rgba(0,0,0,.5); text-align: left; }
+.wxa-picker-confirm { color: #07c160; text-align: right; }
+.wxa-picker-body { position: relative; display: flex; height: ${PICKER_ITEM_HEIGHT * 5}px; overflow: hidden; }
 .wxa-picker-column { flex: 1; min-width: 0; overflow-y: auto; padding: ${PICKER_ITEM_HEIGHT * 2}px 0; box-sizing: border-box; scroll-snap-type: y mandatory; overscroll-behavior: contain; scrollbar-width: none; }
 .wxa-picker-column::-webkit-scrollbar { display: none; }
-.wxa-picker-item { height: ${PICKER_ITEM_HEIGHT}px; line-height: ${PICKER_ITEM_HEIGHT}px; padding: 0 4px; overflow: hidden; font-size: 17px; color: rgba(0,0,0,.4); text-align: center; white-space: nowrap; text-overflow: ellipsis; scroll-snap-align: center; cursor: pointer; }
-.wxa-picker-item.is-selected { color: rgba(0,0,0,.9); }
-.wxa-picker-indicator { position: absolute; left: 0; right: 0; top: ${PICKER_ITEM_HEIGHT * 2}px; height: ${PICKER_ITEM_HEIGHT}px; border-radius: 8px; background: rgba(0,0,0,.05); pointer-events: none; }
+/* 开发者工具里选项没有单独设置字号，继承到的是 11px（按它的截图量得） */
+.wxa-picker-item { height: ${PICKER_ITEM_HEIGHT}px; line-height: ${PICKER_ITEM_HEIGHT}px; overflow: hidden; font-size: 11px; color: rgba(0,0,0,.9); text-align: center; white-space: nowrap; text-overflow: ellipsis; scroll-snap-align: center; cursor: pointer; }
+.wxa-picker-mask { position: absolute; inset: 0; z-index: 1; pointer-events: none; background-image: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.6)), linear-gradient(0deg, rgba(255,255,255,.95), rgba(255,255,255,.6)); background-position: top, bottom; background-size: 100% 92px; background-repeat: no-repeat; }
+.wxa-picker-indicator { position: absolute; left: 0; right: 0; top: 92px; z-index: 1; height: 56px; pointer-events: none; }
+.wxa-picker-indicator::before, .wxa-picker-indicator::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; transform: scaleY(.5); }
+.wxa-picker-indicator::before { top: 0; border-top: 1px solid rgba(0,0,0,.1); transform-origin: 0 0; }
+.wxa-picker-indicator::after { bottom: 0; border-bottom: 1px solid rgba(0,0,0,.1); transform-origin: 0 100%; }
 .wxa-preview { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; pointer-events: auto; }
 .wxa-preview-image { max-width: 100%; max-height: 100%; object-fit: contain; }
 .wxa-preview-position { position: absolute; top: 60px; left: 0; right: 0; color: #fff; font-size: 15px; text-align: center; pointer-events: none; }
@@ -88,5 +93,7 @@ html, body { margin: 0; height: 100%; background: radial-gradient(120% 80% at 50
 .wxa-notice-close { flex: none; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: none; color: #999; font-size: 16px; line-height: 20px; cursor: pointer; }
 .wxa-notice-close:hover { background: rgba(0,0,0,.06); color: #111214; }
 @keyframes wxa-spin { to { transform: rotate(360deg); } }
+@keyframes wxa-fade-in { from { opacity: 0; } }
+@keyframes wxa-slide-up { from { transform: translateY(100%); } }
 @keyframes wxa-notice-in { from { opacity: 0; transform: translateY(-8px); } }
 `;
