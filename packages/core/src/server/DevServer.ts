@@ -11,7 +11,7 @@
  *   /__wxa__/page-styles.js    渲染层的样式（热更新时重新下发）
  *   /__baselib__/*             官方基础库
  *   /__wxa__/proxy?url=        网络代理
- *   /__wxa__/tmp               临时文件：POST ?type=png 保存，返回可直接访问的地址；对该地址 HEAD 查大小、DELETE 删除
+ *   /__wxa__/tmp               临时文件：POST ?type=png 保存，返回可直接访问的地址（GET 支持分段请求）；对该地址 HEAD 查大小、DELETE 删除
  *   /__wxa__/region/<kind>     地区选择器用的行政区划数据（districts / streets），取自本机开发者工具
  *   /__wxa__/api/*             真实登录（--real-login）：wx.login 的 code、手机号，只允许本机访问
  *   /__wxa__/ws                文件变化通知：热更新（hot）或整页刷新（reload）
@@ -294,7 +294,23 @@ export class DevServer {
         res.status(404).end();
         return;
       }
-      res.type(path.extname(req.params.name)).send(data);
+      res.type(path.extname(req.params.name));
+      // 支持分段请求，video 组件播放临时文件时才能跳转（不支持时浏览器认为视频不能跳转，seek 不起作用）
+      res.setHeader('Accept-Ranges', 'bytes');
+      const ranges = req.range(data.length);
+      if (ranges === -1) {
+        res.status(416).setHeader('Content-Range', `bytes */${data.length}`);
+        res.end();
+        return;
+      }
+      if (Array.isArray(ranges) && ranges.type === 'bytes' && ranges.length === 1) {
+        const { start, end } = ranges[0];
+        res.status(206).setHeader('Content-Range', `bytes ${start}-${end}/${data.length}`);
+        res.setHeader('Content-Length', end - start + 1);
+        res.end(data.subarray(start, end + 1));
+        return;
+      }
+      res.send(data);
     });
     app.delete('/__wxa__/tmp/:name', (req, res) => {
       res.status(this.tempFiles.delete(req.params.name) ? 204 : 404).end();

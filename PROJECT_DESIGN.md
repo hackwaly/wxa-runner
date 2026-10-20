@@ -330,7 +330,7 @@ navigateTo(url)
 | network | `createRequestTask` 同步返回 taskId，结果通过 `onRequestTaskStateChange` 依次推送 `headersReceived`、`success` / `fail`；下载、上传、WebSocket 同理。`success` 的 data 按 `responseType` 是文本或 ArrayBuffer，被拦截的请求也一样；WebSocket 的二进制消息是 ArrayBuffer。基础库把业务传的 ArrayBuffer（请求体、WebSocket 消息）原样交给宿主，不经 `__nativeBuffers__`。每个 `wx.request` 都记录下来，供测试 API 的 `requests()` 读取 |
 | routes | 请求拦截规则：setup 的 `network.routes` 和测试 API 的 `route` 共用，在浏览器里匹配，命中的请求不发往代理 |
 | ui | toast / loading / modal / actionSheet / 导航栏 |
-| media | 选图（chooseImage / chooseMedia）、previewImage、getImageInfo、saveImageToPhotosAlbum，见下文「原生组件」 |
+| media | 选图和视频（chooseImage / chooseMedia / chooseVideo）、previewImage、getImageInfo、saveImageToPhotosAlbum，见下文「原生组件」 |
 | audio | 原生音频接口（createAudioInstance、setAudioState、operateAudio 等），3.3.x 及更早版本的 InnerAudioContext 用，见下文「原生组件」 |
 | map | map 组件要的定位（`private_geolocation`）和 `moveToMapLocation`，见下文「原生组件」 |
 | picker | picker 组件的选择器弹层，见下文「原生组件」 |
@@ -387,10 +387,12 @@ setup 和测试 API 的 `mock` 都在注册表这一层覆盖原生实现。
   旧版 canvas 的 `drawImage` 正好相反：基础库把 http(s) 地址都当成网络图片直接跳过（只放行开发者工具的 `http://tmp/` 等），
   不报错，画布上什么也没有。所以宿主转发绘制指令（`canvasActionsChanged`）时，把其中的临时文件地址换成根路径 `/__wxa__/tmp/…`，
   页面和组件里都按开发服务器的根目录解析
-- **选图**：「从手机相册选择」和「拍摄」都打开浏览器的文件选择框（拍摄带 `capture`，手机浏览器上会打开相机）。
+- **选图和视频**：「从手机相册选择」和「拍摄」都打开浏览器的文件选择框（拍摄带 `capture`，手机浏览器上会打开相机）。
   和真机一样，两种来源都可选时先弹菜单。浏览器只允许在用户点击后的几秒内打开文件选择框（页面里的点击也算，会传到宿主页），
   没有经过点击就调用时也先弹菜单，用户点菜单就是一次点击；否则选择框打不开，回调永远不来。
-  `chooseMedia` 只支持图片。`previewImage` 是宿主的全屏预览层，`saveImageToPhotosAlbum` 让浏览器下载这张图片
+  选视频时用 `<video>` 读出时长和宽高，`chooseMedia` 还截第一帧作缩略图，浏览器解码不了的格式这几项为空；
+  不允许混选（`mediaType` 没有 `mix`）时只保留和第一个文件同类的，真机上选了一种就不能再选另一种。
+  `previewImage` 是宿主的全屏预览层，`saveImageToPhotosAlbum` 让浏览器下载这张图片
 - **音频（InnerAudioContext）**：3.5.8 起平台是 devtools 时基础库用 Web Audio 播放，先把音频读成 ArrayBuffer。
   网络音频经带 `__skipDomainCheck__` 的内部请求下载，宿主按请求的形状（`responseType` 为 `arraybuffer` 且带 `enableCache`，
   2.32.3 到 3.17.4 都是这样）只放行这一种，经代理下载；代码包里的音频经 `readFile` 向开发服务器读取。

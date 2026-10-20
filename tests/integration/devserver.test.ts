@@ -97,6 +97,23 @@ describe.skipIf(!ready)('DevServer', () => {
     expect((await get('/__wxa__/tmp/missing.jpg')).status).toBe(404);
   });
 
+  it('临时文件支持分段请求（video 组件播放时要能跳转），超出范围时返回 416', async () => {
+    const saved = await fetch(base + '/__wxa__/tmp?type=mp4', { method: 'POST', body: Buffer.from('0123456789') });
+    const { url } = await saved.json();
+
+    const part = await fetch(url, { headers: { range: 'bytes=2-5' } });
+    expect(part.status).toBe(206);
+    expect(part.headers.get('content-range')).toBe('bytes 2-5/10');
+    expect(await part.text()).toBe('2345');
+
+    const tail = await fetch(url, { headers: { range: 'bytes=7-' } });
+    expect(await tail.text()).toBe('789');
+
+    const outside = await fetch(url, { headers: { range: 'bytes=20-' } });
+    expect(outside.status).toBe(416);
+    expect(outside.headers.get('content-range')).toBe('bytes */10');
+  });
+
   it('临时文件可以只查大小，删除后访问不到', async () => {
     const saved = await fetch(base + '/__wxa__/tmp?type=txt', { method: 'POST', body: Buffer.from('hello') });
     const { url } = await saved.json();

@@ -36,7 +36,7 @@ wxa-runner 用的是和开发者工具同一套官方基础库，渲染、组件
 | 分包 | 普通分包、独立分包，分包预下载（preloadRule），分包异步化：跨分包引用组件（componentPlaceholder）和 JS（require.async）。代码启动时全部加载，没有下载过程 |
 | 界面 | 导航栏、tabBar（包括自定义 tabBar）、toast / modal / actionSheet，默认模拟 iPhone X |
 | 组件 | picker、canvas、camera、video、map（需要联网）、web-view |
-| 媒体 | chooseImage、chooseMedia（只能选图片）由浏览器选文件，previewImage、getImageInfo，保存到相册即下载；InnerAudioContext 播放音频 |
+| 媒体 | chooseImage、chooseMedia（图片和视频）、chooseVideo 由浏览器选文件，previewImage、getImageInfo，保存到相册即下载；InnerAudioContext 播放音频 |
 | 网络 | request、上传、下载由开发服务器转发（没有跨域限制），WebSocket |
 | 存储 | Storage、FileSystemManager 基本操作 |
 | 登录、用户信息等开放接口 | 返回固定的假数据，支付、扫码默认失败，[默认返回什么](./setup.md#mock)。可以用 setup mock，或用[真实登录](./real-login.md)拿真实的 code |
@@ -48,7 +48,7 @@ wxa-runner 用的是和开发者工具同一套官方基础库，渲染、组件
 - **基础库版本**：3.7.1 起的基础库不会自动选用，要用 `--baselib` 或 `WXA_BASELIB` 指定，启动时提示超出已验证的范围。
   内置基础库只有 3.7.0，更新的版本要先在开发者工具里下载
 - **未实现的 API**：还没有实现的原生 API 调用后返回成功，以免打断业务代码。测试里会被发现，见[检查运行时错误](./testing.md#检查运行时错误)
-- **设备能力**：不支持蓝牙等设备能力；`chooseMedia` 不能选视频
+- **设备能力**：不支持蓝牙等设备能力
 - **地图**：MapContext 的 toScreenLocation、fromScreenLocation、地面覆盖物等方法在基础库的网页实现里没有，调用后不会回调
   （详见[设计文档](https://github.com/open-wxa/wxa-runner/blob/main/PROJECT_DESIGN.md#原生组件)）
 - **小程序能力**：不支持插件、Worker（[#10](https://github.com/open-wxa/wxa-runner/issues/10)）

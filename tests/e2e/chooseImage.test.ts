@@ -1,5 +1,5 @@
 /**
- * 端到端：选图、预览与保存图片
+ * 端到端：选图和视频、预览与保存图片
  *
  * 选图由宿主打开浏览器的文件选择框，测试用 Playwright 的 filechooser 直接给文件，不弹系统窗口。
  * 和真机一样，相册和拍摄都可选时先弹菜单。没有经过用户点击就选图时也先弹菜单，见 tests/unit/media.test.ts。
@@ -9,6 +9,7 @@
 import fs from 'fs';
 import http from 'http';
 import type { AddressInfo } from 'net';
+import path from 'path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { png } from '../helpers';
 import { e2eReady, expectText, Runner, startRunner } from './runner';
@@ -17,12 +18,17 @@ const AVATAR = { name: 'avatar.png', mimeType: 'image/png', buffer: png(40, 30) 
 const BANNER = { name: 'banner.png', mimeType: 'image/png', buffer: png(20, 10) };
 const ICON = { name: 'icon.png', mimeType: 'image/png', buffer: png(8, 8) };
 const REMOTE = { name: 'remote.png', mimeType: 'image/png', buffer: png(24, 12) };
+// 2 秒，64x48
+const CLIP = { name: 'clip.webm', mimeType: 'video/webm', buffer: fs.readFileSync(path.join(__dirname, 'fixtures/clip-2s.webm')) };
 
 const ALBUM_WXML = `
 <button id="choose" bindtap="choose">选图</button>
 <button id="choose-two" bindtap="chooseTwoFromAlbum">从相册选两张</button>
 <button id="choose-media" bindtap="chooseMedia">chooseMedia 选图</button>
 <button id="choose-video" bindtap="chooseVideo">chooseMedia 选视频</button>
+<button id="choose-image-or-video" bindtap="chooseImageOrVideo">chooseMedia 选图片或视频</button>
+<button id="choose-mix" bindtap="chooseMix">chooseMedia 混选图片和视频</button>
+<button id="call-choose-video" bindtap="callChooseVideo">chooseVideo</button>
 <button id="upload" bindtap="upload">上传</button>
 <button id="preview" bindtap="preview">预览</button>
 <button id="chosen-info" bindtap="chosenImageInfo">所选图片信息</button>
@@ -34,11 +40,20 @@ const ALBUM_WXML = `
 <image wx:if="{{paths.length}}" src="{{paths[0]}}" bindload="onPhotoLoad" binderror="onPhotoError" style="width:40px;height:30px"></image>
 <view id="photo">{{photo}}</view>
 <view id="upload-result">{{uploadResult}}</view>
+<block wx:if="{{video}}">
+  <video id="chosen-video" src="{{video.tempFilePath}}" muted bindplay="onVideoPlay" bindtimeupdate="onVideoTimeUpdate" bindended="onVideoEnded"></video>
+  <image wx:if="{{video.thumbTempFilePath}}" src="{{video.thumbTempFilePath}}" bindload="onThumbLoad" style="width:64px;height:48px"></image>
+</block>
+<view id="video-info">{{videoInfo}}</view>
+<view id="thumb">{{thumb}}</view>
+<button id="play-video" bindtap="playVideo">播放所选视频</button>
+<view id="video-ended">{{videoEnded}}</view>
+<view id="video-positions">{{videoPositions}}</view>
 `;
 
 const albumJs = (server: string) => `
 Page({
-  data: { result: '', paths: [], photo: '', uploadResult: '' },
+  data: { result: '', paths: [], photo: '', uploadResult: '', video: null, videoInfo: '', thumb: '', videoEnded: '', videoPositions: '' },
   report(err) { this.setData({ result: err.errMsg }); },
   onChosen(res) {
     this.setData({ result: 'chosen ' + res.tempFiles.map(file => file.size).join(','), paths: res.tempFilePaths });
@@ -49,19 +64,49 @@ Page({
   chooseTwoFromAlbum() {
     wx.chooseImage({ count: 2, sourceType: ['album'], success: res => this.onChosen(res), fail: err => this.report(err) });
   },
+  onMediaChosen(res) {
+    const video = res.tempFiles.find(file => file.fileType === 'video');
+    this.setData({
+      result: res.type + ' ' + res.tempFiles.map(file => file.fileType + ':' + file.size).join(','),
+      paths: res.tempFiles.filter(file => file.fileType === 'image').map(file => file.tempFilePath),
+      video: video || null,
+      videoInfo: video ? video.duration.toFixed(1) + 's ' + video.width + 'x' + video.height : ''
+    });
+  },
   chooseMedia() {
-    wx.chooseMedia({
-      mediaType: ['image'],
+    wx.chooseMedia({ mediaType: ['image'], success: res => this.onMediaChosen(res), fail: err => this.report(err) });
+  },
+  chooseVideo() {
+    wx.chooseMedia({ mediaType: ['video'], sourceType: ['album'], success: res => this.onMediaChosen(res), fail: err => this.report(err) });
+  },
+  chooseImageOrVideo() {
+    wx.chooseMedia({ sourceType: ['album'], success: res => this.onMediaChosen(res), fail: err => this.report(err) });
+  },
+  chooseMix() {
+    wx.chooseMedia({ mediaType: ['mix'], sourceType: ['album'], success: res => this.onMediaChosen(res), fail: err => this.report(err) });
+  },
+  callChooseVideo() {
+    wx.chooseVideo({
+      sourceType: ['album'],
       success: res => this.setData({
-        result: res.type + ' ' + res.tempFiles.map(file => file.fileType + ':' + file.size).join(','),
-        paths: res.tempFiles.map(file => file.tempFilePath)
+        result: 'chooseVideo ' + res.size + ' ' + res.duration.toFixed(1) + 's ' + res.width + 'x' + res.height,
+        video: { tempFilePath: res.tempFilePath }
       }),
       fail: err => this.report(err)
     });
   },
-  chooseVideo() {
-    wx.chooseMedia({ mediaType: ['video'], success: () => this.setData({ result: 'chosen video' }), fail: err => this.report(err) });
+  onThumbLoad(e) { this.setData({ thumb: 'loaded ' + e.detail.width + 'x' + e.detail.height }); },
+  playVideo() { wx.createVideoContext('chosen-video').play(); },
+  // 开始播放就跳到 1.5 秒；videoPositions 是 timeupdate 报告的每个播放位置
+  onVideoPlay() {
+    if (this.seeked) return;
+    this.seeked = true;
+    wx.createVideoContext('chosen-video').seek(1.5);
   },
+  onVideoTimeUpdate(e) {
+    this.setData({ videoPositions: (this.data.videoPositions ? this.data.videoPositions + ',' : '') + e.detail.currentTime.toFixed(2) });
+  },
+  onVideoEnded() { this.setData({ videoEnded: 'yes' }); },
   onPhotoLoad(e) { this.setData({ photo: 'loaded ' + e.detail.width + 'x' + e.detail.height }); },
   onPhotoError(e) { this.setData({ photo: 'error ' + e.detail.errMsg }); },
   upload() {
@@ -245,12 +290,61 @@ describe.skipIf(!e2eReady)('选图、预览与保存图片', () => {
       await expectText(frame, '#photo', 'loaded 40x30');
     });
 
-    it('页面只要视频时 chooseMedia 直接失败，说明暂不支持选视频', async () => {
+    it('页面只要视频时文件选择框只接受视频，用户选了视频后返回 type 为 video，文件带时长、宽高、大小和能直接显示的缩略图', async () => {
       const frame = await runner.open(ALBUM_PAGE);
 
-      await frame.click('#choose-video');
+      const chooser = await pickFiles(() => frame.click('#choose-video'), [CLIP]);
 
-      await expectText(frame, '#result', /^chooseMedia:fail .*视频/);
+      expect(await chooser.element().getAttribute('accept')).toBe('video/*');
+      await expectText(frame, '#result', `video video:${CLIP.buffer.length}`);
+      await expectText(frame, '#video-info', '2.0s 64x48');
+      await expectText(frame, '#thumb', 'loaded 64x48');
+    });
+
+    it('用户选的视频可以直接用 video 组件播放，开始播放就跳到 1.5 秒时跳过中间的内容播到结束', async () => {
+      const frame = await runner.open(ALBUM_PAGE);
+      await pickFiles(() => frame.click('#choose-video'), [CLIP]);
+      await expectText(frame, '#video-info', '2.0s 64x48');
+
+      await frame.click('#play-video');
+
+      await expectText(frame, '#video-ended', 'yes');
+      // 不跳转时每 0.25 秒左右报告一次位置，0.5 到 1.5 秒之间会报告好几次
+      const positions = (await frame.textContent('#video-positions'))!.split(',').map(Number);
+      expect(positions.filter(position => position > 0.5 && position < 1.5)).toEqual([]);
+    });
+
+    it('图片和视频都可选但不允许混选时，用户同时选了两种，只返回和第一个文件同类的', async () => {
+      const frame = await runner.open(ALBUM_PAGE);
+
+      const chooser = await pickFiles(() => frame.click('#choose-image-or-video'), [CLIP, AVATAR]);
+
+      expect(await chooser.element().getAttribute('accept')).toBe('image/*,video/*');
+      await expectText(frame, '#result', `video video:${CLIP.buffer.length}`);
+    });
+
+    it('mediaType 带 mix 时用户可以同时选图片和视频，返回 type 为 mix', async () => {
+      const frame = await runner.open(ALBUM_PAGE);
+
+      await pickFiles(() => frame.click('#choose-mix'), [AVATAR, CLIP]);
+
+      await expectText(frame, '#result', `mix image:${AVATAR.buffer.length},video:${CLIP.buffer.length}`);
+      await expectText(frame, '#photo', 'loaded 40x30');
+      await expectText(frame, '#thumb', 'loaded 64x48');
+    });
+  });
+
+  describe('chooseVideo', () => {
+    it('用户用 chooseVideo 选了一个视频后，页面拿到大小、时长和宽高，临时路径能直接用 video 组件播放', async () => {
+      const frame = await runner.open(ALBUM_PAGE);
+
+      const chooser = await pickFiles(() => frame.click('#call-choose-video'), [CLIP]);
+
+      expect(await chooser.element().getAttribute('accept')).toBe('video/*');
+      expect(chooser.isMultiple()).toBe(false);
+      await expectText(frame, '#result', `chooseVideo ${CLIP.buffer.length} 2.0s 64x48`);
+      await frame.click('#play-video');
+      await expectText(frame, '#video-ended', 'yes');
     });
   });
 
