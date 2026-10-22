@@ -31,7 +31,7 @@ const GROUPS = [
     title: '界面与系统',
     items: [
       { url: '/pages/ui/ui', name: '界面 API', desc: 'toast、loading、modal、actionSheet、导航栏、下拉刷新' },
-      { url: '/pages/device/device', name: '设备与开放接口', desc: '系统信息、剪贴板、定位、扫码、登录与授权' },
+      { url: '/pages/device/device', name: '设备与开放接口', desc: '系统信息、剪贴板、定位、扫码、登录与授权、服务市场' },
       { url: '/pages/route/route', name: '路由与生命周期', desc: 'redirectTo、reLaunch、页面栈、onShow / onHide / onUnload' }
     ]
   },

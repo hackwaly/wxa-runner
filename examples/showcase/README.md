@@ -39,7 +39,7 @@ node packages/cli/bin/wxa-runner.js dev examples/showcase --open
 | picker 选择器 | 普通、range-key、多列联动、时间、日期、省市区（三种 level）、picker-view |
 | 滚动与手势 | 点击与长按、事件冒泡、scroll-view（含自定义下拉刷新）、swiper、movable-view、页面滚动 |
 | 界面 API | toast、loading、modal、actionSheet、导航栏、下拉刷新 |
-| 设备与开放接口 | 设备与窗口信息、剪贴板、定位、扫码、登录与授权等 |
+| 设备与开放接口 | 设备与窗口信息、剪贴板、定位、扫码、登录与授权、服务市场 invokeService 等 |
 | 路由与生命周期 | 各种路由方法和应该失败的跳转、页面栈、各实例的生命周期顺序 |
 | web-view | 允许嵌入和禁止嵌入的两个网页，事件显示在导航栏标题上 |
 

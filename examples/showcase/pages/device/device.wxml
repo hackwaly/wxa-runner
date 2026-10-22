@@ -17,4 +17,11 @@
     <button wx:for="{{group.apis}}" wx:key="*this" size="mini" data-api="{{item}}" bindtap="callApi">{{item}}</button>
   </view>
 </view>
+<view class="card">
+  <text class="title">服务市场</text>
+  <text class="hint">wx.serviceMarket.invokeService：jokebot</text>
+  <view class="btns">
+    <button wx:for="{{jokeModes}}" wx:key="mode" size="mini" data-mode="{{item.mode}}" bindtap="invokeService">{{item.name}}</button>
+  </view>
+</view>
 <log-panel logs="{{logs}}" bind:clear="clearLog" />
