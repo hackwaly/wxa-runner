@@ -70,5 +70,5 @@ export type FromWorkerMessage =
   | { type: 'message'; data: unknown }
   /** Worker 里调用原生接口 */
   | { type: 'invoke'; api: string; args: unknown; callbackId: number }
-  /** Worker 里没有被捕获的异常 */
+  /** Worker 基础库捕获的、业务没有处理的异常 */
   | { type: 'error'; message: string; stack?: string };

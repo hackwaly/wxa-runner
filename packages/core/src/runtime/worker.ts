@@ -53,9 +53,14 @@ scope.addEventListener('message', ({ data }: MessageEvent<ToWorkerMessage>) => {
   else scope.WeixinJSBridge.invokeCallbackHandler(data.callbackId, data.result);
 });
 
-const reportError = (error: unknown) => {
+/**
+ * Worker 基础库捕获的异常都先交给 __wxSourceMapRetrace__（开发者工具用它还原 source map），包括它捕获的接口回调异常，
+ * 以及它监听全局 error / unhandledrejection 拿到的异常（拿到后 preventDefault，不再冒泡到逻辑层的 Worker 对象）；
+ * 它只打印到 Worker 的控制台，不交给业务的 worker.onError。这里发回逻辑层，原样返回错误。
+ * 基础库加载前的异常没有人处理，冒泡到逻辑层的 Worker 对象，见 runtime/workers.ts
+ */
+scope.__wxSourceMapRetrace__ = (error: unknown) => {
   const err = typeof (error as Error | null)?.message === 'string' ? (error as Error) : null;
   send({ type: 'error', message: err ? err.message : String(error), stack: typeof err?.stack === 'string' ? err.stack : undefined });
+  return error;
 };
-scope.addEventListener('error', (event: ErrorEvent) => reportError(event.error ?? event.message));
-scope.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => reportError(event.reason));
