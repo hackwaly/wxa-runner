@@ -26,7 +26,8 @@ function testApiMembers(): string[] {
 
 /** docs/test-api.md「成员」一节表格里列出的成员 */
 function documentedMembers(): Set<string> {
-  const doc = fs.readFileSync(path.join(REPO_ROOT, 'docs/test-api.md'), 'utf8');
+  // Windows 上按 CRLF 检出时也能按行切分
+  const doc = fs.readFileSync(path.join(REPO_ROOT, 'docs/test-api.md'), 'utf8').replace(/\r\n/g, '\n');
   const section = doc.split(/^## /m).find(part => part.startsWith('成员\n'));
   if (!section) throw new Error('docs/test-api.md 里找不到「## 成员」一节');
   const rows = section.split('\n').filter(line => line.startsWith('|'));

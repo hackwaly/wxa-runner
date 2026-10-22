@@ -83,15 +83,27 @@ afterEach(async () => {
   await Promise.all(cleanups.splice(0).map(cleanup => cleanup()));
 });
 
-/** 本机装的开发者工具：electron 是新版，nw 是旧版（package.nw）。两种都带命令行 */
+/**
+ * 本机装的开发者工具：electron 是新版，nw 是旧版（package.nw）。两种都带命令行，按本机平台的安装布局放：
+ * macOS 是 Contents/MacOS/cli，Windows 是安装目录下经 cmd 运行的 cli.bat
+ */
 function installDevtools(kind: 'electron' | 'nw') {
-  const root = createProject({
-    [kind === 'electron' ? 'Contents/Resources/app.asar.unpacked/package.json' : 'Contents/Resources/package.nw/package.json']: {},
-    'Contents/MacOS/cli': CLI_SCRIPT,
-    'Contents/MacOS/reply.json': { stdout: '', exitCode: 0 }
-  });
-  const dir = path.join(root, 'Contents/MacOS');
-  fs.chmodSync(path.join(dir, 'cli'), 0o755);
+  const windows = process.platform === 'win32';
+  const root = createProject(
+    windows
+      ? {
+          [kind === 'electron' ? 'resources/app.asar.unpacked/package.json' : 'code/package.nw/package.json']: {},
+          'cli.bat': `@"${process.execPath}" "%~dp0cli.js" %*\r\n`,
+          'cli.js': CLI_SCRIPT
+        }
+      : {
+          [kind === 'electron' ? 'Contents/Resources/app.asar.unpacked/package.json' : 'Contents/Resources/package.nw/package.json']: {},
+          'Contents/MacOS/cli': CLI_SCRIPT
+        }
+  );
+  const dir = windows ? root : path.join(root, 'Contents/MacOS');
+  fs.writeFileSync(path.join(dir, 'reply.json'), JSON.stringify({ stdout: '', exitCode: 0 }));
+  if (!windows) fs.chmodSync(path.join(dir, 'cli'), 0o755);
   vi.stubEnv('WXA_DEVTOOLS_PATH', root);
 
   return {
@@ -113,16 +125,21 @@ function installDevtools(kind: 'electron' | 'nw') {
   };
 }
 
+/** 用户主目录换成 dir；Windows 上开发者工具的用户数据在 %LOCALAPPDATA% 下，也一并换到 dir 里 */
 function useHome(dir: string) {
   vi.spyOn(os, 'homedir').mockReturnValue(dir);
+  vi.stubEnv('LOCALAPPDATA', path.join(dir, 'AppData/Local'));
 }
 
 /** 用户数据目录里一个账号的登录数据，是旧版开发者工具以明文写下的 */
 function homeWithSavedTicket(newticket: string): string {
-  const profile = path.join(
-    process.platform === 'darwin' ? 'Library/Application Support/微信开发者工具' : '.config/wechat_devtools',
-    '50a7d9210159a32f006158795f893857/WeappLocalData'
-  );
+  const userData =
+    process.platform === 'darwin'
+      ? 'Library/Application Support/微信开发者工具'
+      : process.platform === 'win32'
+        ? 'AppData/Local/微信开发者工具/User Data'
+        : '.config/wechat_devtools';
+  const profile = path.join(userData, '50a7d9210159a32f006158795f893857/WeappLocalData');
   return createProject({
     [`${profile}/hash_key_map_2.json`]: { a1b2: 'reduxPersist:user' },
     [`${profile}/localstorage_a1b2.json`]: { currentUser: { newticket, ticketExpiredTime: Date.now() + HOUR, loginStatus: 'SUCCESS' } }

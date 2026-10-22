@@ -30,7 +30,7 @@ node packages/cli/bin/wxa-runner.js dev examples/showcase --open   # 用源码�
 ```
 
 - 找不到编译器、基础库或 Chrome 时，依赖它们的用例会自动跳过；`pnpm test:playwright` 不跳过，找不到时直接报错
-- e2e 默认使用 `/Applications/Google Chrome.app`，其他位置通过环境变量 `WXA_CHROME` 指定，如 Linux 上
+- e2e 默认使用 Chrome 的默认安装位置（macOS 的 `/Applications/Google Chrome.app`，Windows 的 `Program Files`、`%LOCALAPPDATA%` 下的 `chrome.exe`），其他位置通过环境变量 `WXA_CHROME` 指定，如 Linux 上
   `WXA_CHROME=/usr/bin/google-chrome pnpm test`
 - 本机没有开发者工具时，`pnpm install` 装上的内置基础库和 miniprogram-compiler 就够跑全部测试
 

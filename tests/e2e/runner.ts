@@ -13,7 +13,14 @@ import { DevServer } from '../../packages/core/src/server/DevServer';
 import { createProject, hasToolchain, REPO_ROOT } from '../helpers';
 
 const RUNTIME_DIR = path.join(REPO_ROOT, 'packages/core/dist/runtime');
-export const CHROME = process.env.WXA_CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+/** Chrome 的默认安装位置：macOS，Windows 的全局安装和用户级安装 */
+const DEFAULT_CHROMES = [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ...[process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.LOCALAPPDATA]
+    .filter(dir => dir)
+    .map(dir => path.join(dir!, 'Google/Chrome/Application/chrome.exe'))
+];
+export const CHROME = process.env.WXA_CHROME || DEFAULT_CHROMES.find(file => fs.existsSync(file)) || DEFAULT_CHROMES[0];
 
 export const e2eReady = hasToolchain() && fs.existsSync(path.join(RUNTIME_DIR, 'host.js')) && fs.existsSync(CHROME);
 

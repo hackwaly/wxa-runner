@@ -1,3 +1,4 @@
+import path from 'path';
 import { describe, expect, it } from 'vitest';
 import { MiniProgram } from '../../packages/core/src/project/MiniProgram';
 import { createWxConfig } from '../../packages/core/src/project/wxConfig';
@@ -42,7 +43,7 @@ describe('MiniProgram 项目解析', () => {
   const app = project.readAppJson();
 
   it('按 project.config.json 的 miniprogramRoot 定位代码目录并读取 appid', () => {
-    expect(project.root.endsWith('/src')).toBe(true);
+    expect(path.basename(project.root)).toBe('src');
     expect(project.appid).toBe('wx123');
   });
 
