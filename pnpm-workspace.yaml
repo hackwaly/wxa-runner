@@ -1,2 +1,10 @@
 packages:
   - 'packages/*'
+
+# 允许执行安装脚本的依赖：esbuild 的安装脚本检查并就位当前平台的二进制。
+# pnpm 11 起用 allowBuilds，onlyBuiltDependencies 被忽略、没放行时安装直接失败；pnpm 10 只认 onlyBuiltDependencies。
+# 两种都写，CI 用的 pnpm 10 和新版本都能放行
+allowBuilds:
+  esbuild: true
+onlyBuiltDependencies:
+  - esbuild
