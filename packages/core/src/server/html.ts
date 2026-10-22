@@ -45,7 +45,8 @@ export function appserviceHtml(
     ...(options.isolated ? { isIsolateContext: true } : {})
   };
   const v = build.version;
-  // 插件在业务代码之前注册：业务代码执行时就能 requirePlugin、跳转插件页面
+  // 插件在业务代码之前注册：业务代码执行时就能 requirePlugin、跳转插件页面。
+  // 插件脚本也排在业务模块的 define 之前，与开发者工具一致：插件初始化时调用 requireMiniProgram() 会因导出模块还没 define 而失败，开发者工具里同样如此
   const pluginUrls = build.plugins.map(plugin => pluginScriptUrl(plugin, 'appservice.js'));
   const moduleUrls = build.modules.map(id => `/__wxa__/module/${encodeURI(id)}?v=${v}`);
   const bootstrapUrl = `/__wxa__/service-bootstrap.js?v=${v}`;
