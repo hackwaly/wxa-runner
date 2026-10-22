@@ -6,7 +6,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { TICKET_ENV } from '../../packages/extractor/src/devtools';
 import { DevServer } from '../../packages/core/src/server/DevServer';
 import { packFakePlugin } from '../fakePlugin';
@@ -29,11 +29,16 @@ describe.skipIf(!ready)('插件代码', () => {
     server = null;
   });
 
-  /** 启动用到插件的小程序；wechat 决定微信对下载请求的响应 */
-  async function start(options: { realLogin: boolean; wechat?: () => Response }) {
-    const pluginPackage = await packFakePlugin(PLUGIN, [{
+  let pluginPackage: Buffer;
+
+  beforeAll(async () => {
+    pluginPackage = await packFakePlugin(PLUGIN, [{
       name: 'hello', path: 'pages/hello/hello', title: '插件页面', wxml: '<view>{{num}}</view>', js: 'Page({});'
     }]);
+  });
+
+  /** 启动用到插件的小程序；wechat 决定微信对下载请求的响应 */
+  async function start(options: { realLogin: boolean; wechat?: () => Response }) {
     const downloads: Array<{ url: URL; body: any }> = [];
     const realFetch = globalThis.fetch;
     vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) => {
@@ -85,6 +90,33 @@ describe.skipIf(!ready)('插件代码', () => {
     await get(`/__wxa__/webview/${PLUGIN_PAGE}.html?id=2`);
 
     expect(downloads).toHaveLength(1);
+  });
+
+  it('微信拒绝下载时，打开一次小程序只向微信请求一次，每个页面资源都按同一个结果处理；再次打开时重试', async () => {
+    let attempts = 0;
+    const { get, downloads, warnings } = await start({
+      realLogin: true,
+      // 第一次拒绝，之后同意：同一次打开里后来的请求不能用上新结果，否则逻辑层和页面列表对不上
+      wechat: () => (++attempts === 1
+        ? new Response(JSON.stringify({ baseresponse: { errcode: 85016, errmsg: 'plugin not authorized' } }))
+        : new Response(new Uint8Array(pluginPackage)))
+    });
+
+    // 打开小程序时宿主先取 app-info，再加载逻辑层、业务模块和渲染层
+    const firstInfo = await (await get('/__wxa__/app-info.json')).json();
+    const service = await (await get('/__wxa__/appservice.html')).text();
+    await get('/__wxa__/module/app.js');
+    await get('/__wxa__/page-frame.js');
+    await get('/__wxa__/webview/pages/index/index.html?id=1');
+
+    expect(downloads).toHaveLength(1);
+    expect(warnings.filter(message => message.includes('85016'))).toHaveLength(1);
+    expect(firstInfo.pages).toEqual(['pages/index/index']);
+    expect(service).not.toContain('/__wxa__/plugin/');
+
+    const secondInfo = await (await get('/__wxa__/app-info.json')).json();
+    expect(downloads).toHaveLength(2);
+    expect(secondInfo.pages).toEqual(['pages/index/index', PLUGIN_PAGE]);
   });
 
   it('逻辑层在业务代码之前加载插件代码，插件页面的渲染层加载插件的模板和样式', async () => {
