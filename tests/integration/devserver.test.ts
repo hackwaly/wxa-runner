@@ -216,6 +216,13 @@ describe.skipIf(!ready)('DevServer：新版基础库（隔离上下文）', () =
     expect(await (await get('/__wxa__/subcontext.html?id=3&empty=1')).text()).not.toContain('WASubContext.js');
   });
 
+  it('基础库里没有 WAWorker.js 时，Worker 入口不去加载它，报告基础库缺少这个文件', async () => {
+    const code = await (await get('/__wxa__/worker.js?id=1')).text();
+    expect(code).not.toContain('/__baselib__/WAWorker.js');
+    expect(code).toContain('/__wxa__/runtime/worker.js');
+    expect(code).toMatch(new RegExp(`throw new Error\\(.*基础库 ${FAKE_BASELIBS.evaluateScriptFile.version.replace(/\./g, '\\.')} 里没有 WAWorker\\.js`));
+  });
+
   it('子上下文页面缺少合法的 id 时返回 400', async () => {
     expect((await get('/__wxa__/subcontext.html')).status).toBe(400);
     expect((await get('/__wxa__/subcontext.html?id=abc')).status).toBe(400);

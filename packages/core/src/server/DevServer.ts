@@ -232,7 +232,8 @@ export class DevServer {
     }));
 
     app.get('/__wxa__/worker.js', this.withBuild((build, _req, res) => {
-      res.type('js').send(workerScript(build));
+      const hasWorker = fs.existsSync(path.join(this.baseLib.dir, 'WAWorker.js'));
+      res.type('js').send(workerScript(build, { version: this.baseLib.version, hasWorker }));
     }));
 
     app.get('/__wxa__/service-bootstrap.js', this.withBuild((build, _req, res) => {

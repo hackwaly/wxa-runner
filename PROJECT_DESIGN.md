@@ -476,6 +476,7 @@ WeixinJSBridge.invoke 的实现（宿主）     ← invoke / → callback       
 
 - **入口**：`/__wxa__/worker.js` 依次加载 `__wxConfig`、`runtime/worker.js`、`WAWorker.js` 和 `workers` 目录下的每个模块（`importScripts`，DevTools 里保留文件名和行号）。
   `create` 收到的脚本名总是 `workers.js`，业务指定的入口由基础库随后发 `requireScript` 消息让 Worker 去 `require`
+- **基础库里没有 `WAWorker.js`**（只放了逻辑层和渲染层文件的旧版内置基础库）时，入口不加载它，直接报告缺少的文件，记入 `errors()`
 - **没有配置 `workers`** 时 `create` 返回 -1，基础库报告 Worker 不存在。基础库加载后会从全局的 `__wxConfig` 里删掉 `workers`，所以在基础库之前读
 - **console**：Worker 基础库把 console 换成转发给逻辑层的版本，转发时对象被转成文本；和开发者工具一样加载完基础库后换回原来的，日志留在 Worker 里
 - **异常**：Worker 里没有被捕获的异常经消息交给宿主，记入测试 API 的 `errors()`；同时以 `workerUncaughtError` 交给逻辑层基础库，业务的 `worker.onError` 收到

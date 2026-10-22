@@ -41,7 +41,8 @@ scope.workerInvokeJsApi = (api: string, args: unknown, callbackId: number) => {
 };
 
 scope.addEventListener('message', ({ data }: MessageEvent<ToWorkerMessage>) => {
-  if (data.type === 'message') scope.WeixinWorker.appServiceMsgHandler(data.data);
+  // Worker 基础库没能加载时（入口已经报告了原因）没有处理函数，消息丢掉
+  if (data.type === 'message') scope.WeixinWorker.appServiceMsgHandler?.(data.data);
   else scope.WeixinJSBridge.invokeCallbackHandler(data.callbackId, data.result);
 });
 

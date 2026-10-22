@@ -148,8 +148,8 @@ importers:
         version: 5.9.3
     optionalDependencies:
       '@open-wxa/wxa-baselib':
-        specifier: github:open-wxa/wxa-baselib#2c167c210da78d8b1e8993ea52bfe6836e6853ae
-        version: https://codeload.github.com/open-wxa/wxa-baselib/tar.gz/2c167c210da78d8b1e8993ea52bfe6836e6853ae
+        specifier: github:open-wxa/wxa-baselib#25495a9ea11724fee7e276e2db9b2c9e8cba9175
+        version: https://codeload.github.com/open-wxa/wxa-baselib/tar.gz/25495a9ea11724fee7e276e2db9b2c9e8cba9175
 
   packages/playwright:
     dependencies:
@@ -752,8 +752,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@open-wxa/wxa-baselib@https://codeload.github.com/open-wxa/wxa-baselib/tar.gz/2c167c210da78d8b1e8993ea52bfe6836e6853ae':
-    resolution: {tarball: https://codeload.github.com/open-wxa/wxa-baselib/tar.gz/2c167c210da78d8b1e8993ea52bfe6836e6853ae}
+  '@open-wxa/wxa-baselib@https://codeload.github.com/open-wxa/wxa-baselib/tar.gz/25495a9ea11724fee7e276e2db9b2c9e8cba9175':
+    resolution: {tarball: https://codeload.github.com/open-wxa/wxa-baselib/tar.gz/25495a9ea11724fee7e276e2db9b2c9e8cba9175}
     version: 0.1.0
 
   '@playwright/test@1.64.0':
@@ -3391,7 +3391,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
 
-  '@open-wxa/wxa-baselib@https://codeload.github.com/open-wxa/wxa-baselib/tar.gz/2c167c210da78d8b1e8993ea52bfe6836e6853ae':
+  '@open-wxa/wxa-baselib@https://codeload.github.com/open-wxa/wxa-baselib/tar.gz/25495a9ea11724fee7e276e2db9b2c9e8cba9175':
     optional: true
 
   '@playwright/test@1.64.0':
