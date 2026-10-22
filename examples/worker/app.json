@@ -1,0 +1,12 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "workers": "workers",
+  "window": {
+    "navigationBarTitleText": "Worker 示例",
+    "navigationBarBackgroundColor": "#07c160",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f5f5"
+  }
+}

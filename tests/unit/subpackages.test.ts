@@ -83,3 +83,29 @@ describe('已预注册分包的原生加载任务', () => {
     expect(emit).not.toHaveBeenCalled();
   });
 });
+
+describe('Worker 分包的加载任务', () => {
+  const create = (workers?: string | { path: string; isSubpackage?: boolean }) => {
+    vi.useFakeTimers();
+    const emit = vi.fn();
+    return { apis: createSubpackageApis({ subPackages: [], workers, emit }), emit };
+  };
+
+  it('workers 配置为分包时，预下载 Worker 分包（模块名 /workers.js）成功', () => {
+    const { apis, emit } = create({ path: 'workers/', isSubpackage: true });
+    const result = call(apis, 'createLoadSubPackageTask', { moduleName: '/workers.js' });
+    expect(result.loadTaskId).toBeTruthy();
+    vi.runAllTimers();
+    expect(emit).toHaveBeenLastCalledWith('onLoadSubPackageTaskStateChange', expect.objectContaining({
+      taskId: result.loadTaskId, moduleName: '/workers.js', state: 'success'
+    }));
+  });
+
+  it.each([undefined, 'workers', { path: 'workers' }])
+  ('Worker 代码不是分包时，预下载 Worker 分包失败，与开发者工具一致：%j', workers => {
+    const { apis, emit } = create(workers);
+    expect(call(apis, 'createLoadSubPackageTask', { moduleName: '/workers.js' }).errMsg).toBe('createLoadSubPackageTask:fail module not found');
+    vi.runAllTimers();
+    expect(emit).not.toHaveBeenCalled();
+  });
+});

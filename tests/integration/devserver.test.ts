@@ -221,3 +221,47 @@ describe.skipIf(!ready)('DevServer：新版基础库（隔离上下文）', () =
     expect((await get('/__wxa__/subcontext.html?id=abc')).status).toBe(400);
   });
 });
+
+describe.skipIf(!ready)('DevServer：Worker', () => {
+  let server: DevServer;
+  const get = (url: string) => fetch(server.url + url);
+
+  beforeAll(async () => {
+    vi.stubEnv('WXA_BASELIB', '');
+    server = new DevServer({
+      projectPath: path.join(EXAMPLES, 'worker'),
+      port: 0,
+      watch: false,
+      runtimeDir: RUNTIME_DIR,
+      logger: { log: () => undefined, warn: () => undefined, error: () => undefined }
+    });
+    await server.start();
+  });
+
+  afterAll(async () => {
+    vi.unstubAllEnvs();
+    await server.close();
+  });
+
+  it('Worker 入口依次加载 __wxConfig、Worker 端运行时、Worker 基础库和 workers 目录下的每个模块', async () => {
+    const res = await get('/__wxa__/worker.js?id=1');
+    expect(res.headers.get('content-type')).toMatch(/javascript/);
+    const code = await res.text();
+    const order = [
+      'var __wxConfig = ',
+      '/__wxa__/runtime/worker.js',
+      '/__baselib__/WAWorker.js',
+      '/__wxa__/module/workers/index.js?v=',
+      '/__wxa__/module/workers/utils/math.js?v='
+    ].map(part => code.indexOf(part));
+    expect(order.every(index => index >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect((await get('/__wxa__/runtime/worker.js')).status).toBe(200);
+  });
+
+  it('Worker 的模块以 define 包装返回，逻辑层不加载它们', async () => {
+    const script = await (await get('/__wxa__/module/workers/utils/math.js')).text();
+    expect(script).toMatch(/^define\("workers\/utils\/math\.js", function\(/);
+    expect(await (await get('/__wxa__/appservice.html')).text()).not.toContain('/__wxa__/module/workers/');
+  });
+});

@@ -1,0 +1,7 @@
+{
+  "appid": "touristappid",
+  "projectname": "wxa-runner-worker",
+  "compileType": "miniprogram",
+  "libVersion": "3.7.0",
+  "setting": {}
+}

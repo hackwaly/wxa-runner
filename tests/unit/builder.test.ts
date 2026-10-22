@@ -133,6 +133,31 @@ describe.skipIf(!hasToolchain())('完整构建', () => {
     expect(result.wxConfig.entryPagePath).toBe('pages/a/a.html');
   });
 
+  it.each(['workers', 'workers/', { path: 'workers', isSubpackage: true }])
+  ('workers 目录下的 JS 不进逻辑层，单独作为 Worker 的模块：%j', async workers => {
+    const root = createProject({
+      'app.json': { pages: ['pages/a/a'], workers },
+      'app.js': 'App({})',
+      'pages/a/a.json': {},
+      'pages/a/a.wxml': '<view>a</view>',
+      'pages/a/a.js': 'Page({})',
+      'workers/index.js': "require('./utils/math.js');",
+      'workers/utils/math.js': 'module.exports = {};'
+    });
+    const builder = new AppBuilder(new MiniProgram(root));
+    const result = await builder.build();
+
+    expect(result.modules).toEqual(['app.js', 'pages/a/a.js']);
+    expect(result.serviceBootstrap).not.toContain('require("workers/');
+    expect(result.workerModules).toEqual(['workers/index.js', 'workers/utils/math.js']);
+    expect(builder.getModuleScript('workers/utils/math.js')).toMatch(/^define\("workers\/utils\/math\.js", function\(/);
+  });
+
+  it('没有配置 workers 时没有 Worker 的模块', async () => {
+    const result = await new AppBuilder(new MiniProgram(demoProject())).build();
+    expect(result.workerModules).toEqual([]);
+  });
+
   it('文件未变化时复用上次结果，变化后版本号递增', async () => {
     const root = demoProject();
     const builder = new AppBuilder(new MiniProgram(root));

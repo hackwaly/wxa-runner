@@ -1,0 +1,27 @@
+<view class="section">
+  <view class="title">双向通信</view>
+  <button id="echo" bindtap="echo">发一条消息，Worker 原样回复</button>
+  <view id="echo-reply">{{echo}}</view>
+</view>
+<view class="section">
+  <view class="title">Worker 引用同目录下的模块</view>
+  <button id="sum" bindtap="sum">让 Worker 求 1 到 100 的和</button>
+  <view id="sum-reply">{{sum}}</view>
+</view>
+<view class="section">
+  <view class="title">结束和重新创建</view>
+  <button id="terminate" bindtap="terminate">结束 Worker</button>
+  <button id="restart" bindtap="restart">重新创建 Worker</button>
+  <view id="status">{{status}}</view>
+</view>
+<view class="section">
+  <view class="title">Worker 里的文件接口</view>
+  <button id="file" bindtap="file">在 Worker 里写入再读出文件</button>
+  <view id="file-reply">{{file}}</view>
+  <button id="read-sync" bindtap="readSync">在 Worker 里同步读文件</button>
+  <view id="read-sync-reply">{{readSync}}</view>
+</view>
+<view class="section">
+  <view class="title">Worker 里的异常</view>
+  <button id="crash" bindtap="crash">让 Worker 处理消息时抛出异常</button>
+</view>
