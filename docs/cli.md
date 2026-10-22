@@ -29,7 +29,7 @@ wxa-runner dev <项目目录> [选项]
 | `--no-setup` | | 不执行 setup 文件 |
 | `--no-watch` | | 不监听文件变化、不热更新，运行环境与真机一致。跑测试时用 |
 | `-o, --open` | | 启动后打开浏览器 |
-| `--real-login` | | 用本机开发者工具的登录态获取真实的 `wx.login` code 和手机号，见[真实登录](./real-login.md) |
+| `--real-login` | | 用本机开发者工具的登录态获取真实的 `wx.login` code 和手机号，真实调用服务市场 `wx.serviceMarket`，见[真实登录](./real-login.md) |
 
 常见用法：
 

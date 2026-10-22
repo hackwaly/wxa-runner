@@ -14,7 +14,7 @@
  *   /__wxa__/proxy?url=        网络代理
  *   /__wxa__/tmp               临时文件：POST ?type=png 保存，返回可直接访问的地址（GET 支持分段请求）；对该地址 HEAD 查大小、DELETE 删除
  *   /__wxa__/region/<kind>     地区选择器用的行政区划数据（districts / streets），取自本机开发者工具
- *   /__wxa__/api/*             真实登录（--real-login）：wx.login 的 code、手机号，只允许本机访问
+ *   /__wxa__/api/*             真实登录（--real-login）：wx.login 的 code、手机号，服务市场转发，只允许本机访问
  *   /__wxa__/ws                文件变化通知：热更新（hot）或整页刷新（reload）
  *   其余路径                    小程序目录下的静态资源
  */

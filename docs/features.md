@@ -40,7 +40,7 @@ wxa-runner 用的是和开发者工具同一套官方基础库，渲染、组件
 | 媒体 | chooseImage、chooseMedia（图片和视频）、chooseVideo 由浏览器选文件，previewImage、getImageInfo，保存到相册即下载；InnerAudioContext 播放音频 |
 | 网络 | request、上传、下载由开发服务器转发（没有跨域限制），WebSocket |
 | 存储 | Storage、FileSystemManager 基本操作 |
-| 登录、用户信息等开放接口 | 返回固定的假数据，支付、扫码默认失败，[默认返回什么](./setup.md#mock)。可以用 setup mock，或用[真实登录](./real-login.md)拿真实的 code |
+| 登录、用户信息等开放接口 | 返回固定的假数据，支付、扫码默认失败，[默认返回什么](./setup.md#mock)。可以用 setup mock，或用[真实登录](./real-login.md)拿真实的 code。服务市场 `wx.serviceMarket` 要加 `--real-login` 才能调用，见[服务市场](./real-login.md#服务市场) |
 
 基础库已验证 2.32.3、3.3.4、3.5.8、3.7.0；3.7.1 和 3.8.8 上全部测试也通过，但默认不会选用，见下文。
 

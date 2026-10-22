@@ -3,6 +3,7 @@
  *
  *   POST /login         → { code }
  *   POST /phone-number  → { data, encryptedData, iv }，code 在 data（JSON 字符串）里，与基础库的约定一致
+ *   POST /operate-wx-data  { data } → { data }：wx.serviceMarket 经原生 operateWXData 发出的请求，同开发者工具转发给微信
  *
  * 失败时返回 500 和 { error: 原因 }。开发者 ticket 只留在 Node 进程里，接口只接受本机访问，
  * 并校验 Host 头防止 DNS rebinding。
@@ -17,6 +18,12 @@ const CLIENT_VERSION = '1021810240';
 const UPSTREAM_TIMEOUT = 10_000;
 const LOOPBACK_ADDRESSES = ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
 const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
+
+/**
+ * 经 /operate-wx-data 转发的 operateWXData：只放行服务市场。别的（用户信息、授权等）在开发者工具里
+ * 会弹窗让用户确认，不能让业务代码借开发者的登录态直接调用
+ */
+const FORWARDED_WX_DATA_APIS = ['webapi_servicemarket_jsapi_comm'];
 
 const ERROR_HINTS: Record<number, string> = {
   // 40001：开发者工具刷新过 ticket，旧的随即作废
@@ -87,6 +94,21 @@ export function realLoginRouter(
     return { data: body.data, encryptedData, iv };
   }));
 
+  router.post('/operate-wx-data', express.json({ limit: '10mb' }), (req, res, next) => {
+    const apiName = req.body?.data?.api_name;
+    if (FORWARDED_WX_DATA_APIS.includes(apiName)) return next();
+    res.status(403).json({ error: `operateWXData 只转发服务市场的请求，不转发 ${apiName}` });
+  }, respond(async req => {
+    // 与开发者工具一致：基础库给的 data 序列化成文本放在 data 字段里
+    const body = await callDevLogic('jsoperatewxdata', { data: JSON.stringify(req.body.data) });
+    const errcode = body.baseresponse?.errcode;
+    if (errcode !== 0 || typeof body.data !== 'string') {
+      throw new Error(`服务市场调用失败 ${errcode}: ${body.baseresponse?.errmsg || '未知错误'}${ERROR_HINTS[errcode] ?? ''}`);
+    }
+    // 服务市场自己的结果码在 data 里，由基础库解析成 invokeService 的结果
+    return { data: JSON.parse(body.data) };
+  }));
+
   return router;
 }
 
@@ -99,10 +121,10 @@ function onlyLoopback(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-function respond(action: () => Promise<object>) {
-  return async (_req: Request, res: Response) => {
+function respond(action: (req: Request) => Promise<object>) {
+  return async (req: Request, res: Response) => {
     try {
-      res.json(await action());
+      res.json(await action(req));
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }

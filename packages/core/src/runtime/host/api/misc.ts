@@ -2,7 +2,7 @@
  * 其余 API：开放接口 Mock、剪贴板等
  *
  * 开放接口（登录、用户信息、支付）在浏览器里无法真实调用，返回可预测的假数据，
- * 测试中可以用 __wxa_test_api__.mock() 覆盖。开启 --real-login 时，登录和手机号经开发服务器向微信换取真实结果。
+ * 测试中可以用 __wxa_test_api__.mock() 覆盖。开启 --real-login 时，登录、手机号和服务市场（wx.serviceMarket）经开发服务器向微信换取真实结果。
  */
 
 import { ApiHandler, ApiResult, fail, ok } from './registry';
@@ -14,10 +14,13 @@ export interface MiscApiOptions {
   onRealLoginFail?: (api: string, reason: string) => void;
 }
 
+/** wx.serviceMarket.invokeService 经原生 operateWXData 发出时的 api_name */
+const SERVICE_MARKET = 'webapi_servicemarket_jsapi_comm';
+
 export function createMiscApis(appid: string, options?: MiscApiOptions): Record<string, ApiHandler> {
-  const realLogin = async (api: string, url: string) => {
+  const realLogin = async (api: string, url: string, json?: object) => {
     try {
-      return await postDevServer(url);
+      return await postDevServer(url, json);
     } catch (error) {
       options?.onRealLoginFail?.(api, (error as Error).message);
       throw error;
@@ -33,6 +36,16 @@ export function createMiscApis(appid: string, options?: MiscApiOptions): Record<
 
     // 基础库经这两个接口向后台拉各种配置和小程序信息
     operateWXData: (args, { api }) => {
+      if (args.data?.api_name === SERVICE_MARKET) {
+        // 基础库只在失败结果带 err_code 时把 errMsg 拼进 invokeService 的错误，否则业务代码只看到 [object Object]
+        const serviceMarketFail = (reason: string) => fail(api, reason, { err_code: -1 });
+        if (!options?.realLogin) return serviceMarketFail('wx.serviceMarket 要向微信服务市场真实调用，启动时加 --real-login');
+        // 结果原样交回：服务市场的结果码和数据由基础库从 data 里解析
+        return realLogin('serviceMarket.invokeService', '/__wxa__/api/operate-wx-data', { data: args.data }).then(
+          ({ data }) => ok(api, { data }),
+          (error: Error) => serviceMarketFail(error.message)
+        );
+      }
       if (args.data?.api_name === 'webapi_getwxanetwork') return bizDomainUnavailable(api);
       if (args.data?.api_name === 'webapi_getwxauserprivacyauthinfo') return ok(api, { data: { data: JSON.stringify(PRIVACY_AUTH_INFO) } });
       return ok(api);
@@ -76,8 +89,11 @@ export function createMiscApis(appid: string, options?: MiscApiOptions): Record<
 let clipboard = '';
 
 /** @throws 开发服务器返回的失败原因（由注册表转成 xxx:fail），返回的不是 JSON 时带上状态码 */
-async function postDevServer(url: string): Promise<Record<string, any>> {
-  const response = await fetch(url, { method: 'POST' });
+async function postDevServer(url: string, json?: object): Promise<Record<string, any>> {
+  const init: RequestInit = json
+    ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(json) }
+    : { method: 'POST' };
+  const response = await fetch(url, init);
   const body = await response.json().catch(() => null);
   if (!response.ok || !body) throw new Error(body?.error || `开发服务器返回 HTTP ${response.status}`);
   return body;
