@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    // 遍历时要删除元素，先展开成数组拷贝一份：[...params.keys()]
+    "unicorn/no-useless-spread": "off"
+  }
+}

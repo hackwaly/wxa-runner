@@ -77,8 +77,8 @@ export class MiniProgram {
 
   /** 读取并预处理页面/组件 json，id 不带扩展名 */
   readUnitJson(id: string, app: AppJson): UnitJson {
-    const json: UnitJson = { ...(readJsonFile(path.join(this.root, id + '.json')) || {}) };
-    json.usingComponents = { ...(json.usingComponents || {}) };
+    const json: UnitJson = { ...readJsonFile(path.join(this.root, id + '.json')) };
+    json.usingComponents = { ...json.usingComponents };
 
     if (!id.startsWith('miniprogram_npm/') && !this.isInIndependentSubPackage(id, app)) {
       for (const [tag, ref] of Object.entries(app.usingComponents || {})) {

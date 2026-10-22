@@ -191,7 +191,7 @@ export class AppBuilder {
       .filter(id => this.project.exists(id + '.wxml'))
       .map(id => {
         const json = unitJson.get(id);
-        return { path: id, tags: Object.keys({ ...json.usingComponents, ...(json.componentGenerics || {}) }) };
+        return { path: id, tags: Object.keys({ ...json.usingComponents, ...json.componentGenerics }) };
       });
 
     const cwd = this.project.root;

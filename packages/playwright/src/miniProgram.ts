@@ -248,7 +248,7 @@ export async function createMiniProgram(page: Page, { baseURL, listPages }: Mini
 
     async mock(api, impl) {
       if (typeof impl !== 'function') return declare({ type: 'mock', api, result: impl });
-      if (/Sync$/.test(api) || SYNC_APIS.has(api)) {
+      if (api.endsWith('Sync') || SYNC_APIS.has(api)) {
         throw new Error(`wx.${api} 由基础库同步调用，只能 mock 成固定的结果对象：Node 里的函数只能异步返回结果`);
       }
       const handler = addHandler(`mock('${api}')`, ([args, context]) => impl(args, context));

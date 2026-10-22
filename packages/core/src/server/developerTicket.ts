@@ -133,6 +133,7 @@ function runCli(cli: string, args: string[]): Promise<string> {
  * util.inspect 默认用单引号，字符串里有单引号时改用双引号，两种都有时用反引号
  */
 function cliErrorMessage(stdout: string): string {
+  // oxlint-disable-next-line no-control-regex -- 去掉命令行输出里的 ANSI 颜色
   const output = stdout.replace(/\x1b\[[0-9;]*m/g, '');
   const start = output.indexOf('[error]');
   const error = (start < 0 ? output : output.slice(start + '[error]'.length)).trim();
