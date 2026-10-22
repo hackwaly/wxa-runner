@@ -1,0 +1,25 @@
+<view class="card">
+  <text class="title">快递跟踪（kdPlugin）</text>
+  <text class="hint">插件页面 plugin://kdPlugin/index，num 和 appName 必填</text>
+  <view class="row">
+    <text class="label">物流单号</text>
+    <input class="input" value="{{num}}" placeholder="物流单号" bindinput="onNumInput" />
+  </view>
+  <picker range="{{companies}}" range-key="name" value="{{companyIndex}}" bindchange="onCompanyChange">
+    <view class="row">
+      <text class="label">快递公司</text>
+      <text>{{companies[companyIndex].name}}</text>
+    </view>
+  </picker>
+  <view class="field">{{url}}</view>
+</view>
+<view class="card">
+  <text class="title">打开插件页面</text>
+  <view class="btns">
+    <button size="mini" bindtap="navigateToPlugin">wx.navigateTo</button>
+    <navigator url="{{url}}">
+      <button size="mini">navigator 组件</button>
+    </navigator>
+  </view>
+</view>
+<log-panel logs="{{logs}}" bind:clear="clearLog" />

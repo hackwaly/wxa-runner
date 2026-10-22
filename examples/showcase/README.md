@@ -41,6 +41,7 @@ node packages/cli/bin/wxa-runner.js dev examples/showcase --open
 | 界面 API | toast、loading、modal、actionSheet、导航栏、下拉刷新 |
 | 设备与开放接口 | 设备与窗口信息、剪贴板、定位、扫码、登录与授权、服务市场 invokeService 等 |
 | 路由与生命周期 | 各种路由方法和应该失败的跳转、页面栈、各实例的生命周期顺序 |
+| 插件 | 快递100「快递跟踪」插件（kdPlugin）：用 wx.navigateTo 和 navigator 组件打开 plugin:// 插件页面。appid 要已添加该插件；wxa-runner 里要加 `--real-login` 才能下载插件代码 |
 | web-view | 允许嵌入和禁止嵌入的两个网页，事件显示在导航栏标题上 |
 
 「能力」页本身是 tab 页，底部有 tabBar API（badge、红点、显示隐藏、样式）。

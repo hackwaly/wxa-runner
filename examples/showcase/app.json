@@ -16,7 +16,8 @@
     "pages/ui/ui",
     "pages/device/device",
     "pages/route/route",
-    "pages/webview/webview"
+    "pages/webview/webview",
+    "pages/plugin/plugin"
   ],
   "window": {
     "navigationBarTitleText": "wxa-runner showcase",
@@ -39,6 +40,9 @@
   },
   "permission": {
     "scope.userLocation": { "desc": "演示 getLocation 和地图的当前位置" }
+  },
+  "plugins": {
+    "kdPlugin": { "version": "1.1.2", "provider": "wx6885acbedba59c14" }
   },
   "requiredPrivateInfos": ["getLocation", "chooseLocation"],
   "style": "v2"

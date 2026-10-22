@@ -36,6 +36,12 @@ const GROUPS = [
     ]
   },
   {
+    title: '插件',
+    items: [
+      { url: '/pages/plugin/plugin', name: '快递跟踪插件', desc: 'plugin:// 插件页面：wx.navigateTo 与 navigator 组件' }
+    ]
+  },
+  {
     title: 'web-view（事件显示在导航栏标题上）',
     items: [
       { url: webview('https://open-wxa.github.io/wxa-runner/'), name: '允许嵌入的网页', desc: 'wxa-runner 文档站' },
