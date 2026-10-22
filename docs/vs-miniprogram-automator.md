@@ -42,7 +42,7 @@ miniprogram-automator 一列取自[官方文档](https://developers.weixin.qq.co
 **用 miniprogram-automator 更合适：**
 
 - 要在真机上跑自动化
-- 小程序用了插件，或者要测 wxa-runner 不支持的能力，如 Worker、蓝牙，见[已知限制](./features.md#已知限制)
+- 小程序用了插件，或者要测 wxa-runner 不支持的能力，如蓝牙、Worker 里的网络请求，见[已知限制](./features.md#已知限制)
 - 要用开发者工具才有的功能，如多账号调试、体验评分
 - 已经有装好开发者工具的 Windows、macOS 测试机，用例也已经用 automator 写好
 

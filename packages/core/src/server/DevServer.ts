@@ -6,7 +6,8 @@
  *   /__wxa__/setup.js          编译后的 setup 文件
  *   /__wxa__/appservice.html   逻辑层
  *   /__wxa__/webview/<page>.html  渲染层（路径与页面一致，wxml 里的相对资源路径因此能正确解析）
- *   /__wxa__/module/<file>.js  单个业务 JS 模块
+ *   /__wxa__/module/<file>.js  单个业务 JS 模块（含 workers 目录下的）
+ *   /__wxa__/worker.js?id=     Worker 的入口
  *   /__wxa__/service-templates.js、page-templates.js  两层的模板（热更新时重新下发）
  *   /__wxa__/page-styles.js    渲染层的样式（热更新时重新下发）
  *   /__baselib__/*             官方基础库
@@ -28,7 +29,7 @@ import { readRegionData, resolveBaseLib, ResolvedBaseLib, usesIsolatedContext } 
 import { AppBuilder, BuildResult } from '../project/AppBuilder';
 import { MiniProgram } from '../project/MiniProgram';
 import type { AppInfo, DeviceProfile } from '../runtime/types';
-import { appserviceHtml, hostHtml, subcontextHtml, webviewHtml } from './html';
+import { appserviceHtml, hostHtml, subcontextHtml, webviewHtml, workerScript } from './html';
 import { ignoreListSourceMap } from './ignoreList';
 import { handleProxy } from './proxy';
 import { planHotUpdate } from './hmr';
@@ -223,11 +224,15 @@ export class DevServer {
 
     app.get(/^\/__wxa__\/module\/(.+\.js)$/, this.withBuild((build, req, res) => {
       const id = decodeURIComponent(req.params[0]);
-      if (!build.modules.includes(id)) {
+      if (!build.modules.includes(id) && !build.workerModules.includes(id)) {
         res.status(404).type('js').send(`console.error(${JSON.stringify(`[wxa-runner] 模块 ${id} 不存在`)})`);
         return;
       }
       res.type('js').send(this.builder.getModuleScript(id));
+    }));
+
+    app.get('/__wxa__/worker.js', this.withBuild((build, _req, res) => {
+      res.type('js').send(workerScript(build));
     }));
 
     app.get('/__wxa__/service-bootstrap.js', this.withBuild((build, _req, res) => {

@@ -21,7 +21,8 @@ export interface AppJson {
   subPackages?: Array<{ root: string; pages: string[]; independent?: boolean; [key: string]: any }>;
   subpackages?: AppJson['subPackages'];
   usingComponents?: Record<string, string>;
-  workers?: string | { path: string };
+  /** isSubpackage：Worker 代码作为分包，业务先调 wx.preDownloadSubpackage({ packageType: 'workers' }) 再创建 Worker */
+  workers?: string | { path: string; isSubpackage?: boolean };
   [key: string]: any;
 }
 
@@ -61,6 +62,12 @@ export class MiniProgram {
 
   subPackages(app: AppJson) {
     return app.subPackages || app.subpackages || [];
+  }
+
+  /** Worker 代码所在目录，不带首尾的 /；没有配置 workers 时为 null */
+  workersDir(app: AppJson): string | null {
+    const dir = typeof app.workers === 'string' ? app.workers : app.workers?.path;
+    return dir ? dir.replace(/^\/+|\/+$/g, '') : null;
   }
 
   /** 主包页面 + 分包页面（带 root 前缀） */
@@ -155,16 +162,15 @@ export class MiniProgram {
   }
 
   /** 列出代码根目录下指定扩展名的文件，返回 posix 风格的相对路径 */
-  listFiles(extensions: string[], excludeDirs: string[] = []): string[] {
+  listFiles(extensions: string[]): string[] {
     const result: string[] = [];
-    const excluded = new Set(excludeDirs.map(dir => dir.replace(/^\/|\/$/g, '')));
 
     const walk = (dir: string, rel: string) => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         if (entry.name.startsWith('.') || IGNORED_DIRS.has(entry.name)) continue;
         const childRel = rel ? `${rel}/${entry.name}` : entry.name;
         if (entry.isDirectory()) {
-          if (!excluded.has(childRel)) walk(path.join(dir, entry.name), childRel);
+          walk(path.join(dir, entry.name), childRel);
         } else if (extensions.some(ext => entry.name.endsWith(ext))) {
           if (!rel && PROJECT_FILES.has(entry.name)) continue;
           result.push(childRel);

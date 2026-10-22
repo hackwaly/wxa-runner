@@ -518,6 +518,7 @@ export class Host implements HostApi {
       ...createStorageApis(this.storage),
       ...createSubpackageApis({
         subPackages: this.info.wxConfig.subPackages || [],
+        workers: this.info.wxConfig.workers,
         emit: (event, data) => this.emitToService(event, data)
       }),
       ...createSavedFileApis(this.storage),

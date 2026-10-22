@@ -3,12 +3,15 @@
  *
  * AppBuilder 已预注册所有分包模块，静态资源也由开发服务器直接提供，因此这里不下载文件，
  * 只按基础库协议交回任务 ID，再异步通知进度与完成。未知包明确失败，不假装加载成功。
+ * Worker 代码配置为分包时（workers.isSubpackage），预下载 Worker 分包的模块名是 /workers.js，与开发者工具一样只在这时成功。
  */
 
 import { ApiHandler, fail, ok } from './registry';
 
 export interface SubpackageApiOptions {
   subPackages: ReadonlyArray<{ root: string; name?: string }>;
+  /** app.json 的 workers */
+  workers?: string | { isSubpackage?: boolean };
   emit: (event: string, data: Record<string, unknown>) => void;
 }
 
@@ -18,6 +21,7 @@ export function createSubpackageApis(options: SubpackageApiOptions): Record<stri
     names.add(normalizeName(pkg.root));
     if (pkg.name) names.add(normalizeName(pkg.name));
   }
+  if (typeof options.workers === 'object' && options.workers.isSubpackage) names.add('workers.js');
   let taskSeq = 0;
 
   const createLoadSubPackageTask: ApiHandler = (args, { api }) => {

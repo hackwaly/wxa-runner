@@ -1,5 +1,5 @@
 Page({
-  data: { echo: '', sum: '', status: '', file: '', readSync: '' },
+  data: { echo: '', binary: '', sum: '', status: '', file: '', readSync: '' },
   onLoad() {
     this.start();
   },
@@ -7,6 +7,7 @@ Page({
     this.worker = wx.createWorker('workers/index.js');
     this.worker.onMessage(({ type, ...reply }) => {
       if (type === 'echo') this.setData({ echo: JSON.stringify(reply.payload) });
+      if (type === 'binary') this.setData({ binary: Array.from(new Uint8Array(reply.buffer)).join(',') });
       if (type === 'sum') this.setData({ sum: `1 到 100 的和是 ${reply.result}` });
       if (type === 'file') this.setData({ file: reply.content || reply.errMsg });
       if (type === 'readSync') this.setData({ readSync: reply.error || reply.content });
@@ -15,6 +16,9 @@ Page({
   echo() {
     this.setData({ echo: '等待回复' });
     this.worker.postMessage({ type: 'echo', payload: { text: '你好', list: [1, { deep: true }] } });
+  },
+  binary() {
+    this.worker.postMessage({ type: 'binary', buffer: new Uint8Array([1, 2, 3]).buffer });
   },
   sum() {
     this.worker.postMessage({ type: 'sum', numbers: Array.from({ length: 100 }, (_, i) => i + 1) });

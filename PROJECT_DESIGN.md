@@ -92,17 +92,19 @@ wxa-runner/
 │   │       │   ├── DevServer.ts       # HTTP 路由、WebSocket、文件变化后重新编译并通知浏览器
 │   │       │   ├── watcher.ts         # 文件监听：合并一次保存的改动，内容没变的不算
 │   │       │   ├── hmr.ts             # 改动能否热更新
-│   │       │   ├── html.ts            # 宿主 / 逻辑层 / 渲染层 HTML
+│   │       │   ├── html.ts            # 宿主 / 逻辑层 / 渲染层 HTML，Worker 的入口脚本
 │   │       │   ├── ignoreList.ts      # 基础库脚本加入 DevTools 忽略列表的 source map
 │   │       │   ├── proxy.ts           # wx.request 等的转发代理
 │   │       │   ├── setup.ts           # 查找、打包 setup 文件，收集 WXA_ 环境变量
 │   │       │   ├── realLogin.ts       # --real-login 的真实登录接口
 │   │       │   └── developerTicket.ts # 真实登录的 ticket：新版开发者工具经自动化接口实时获取
-│   │       └── runtime/               # 浏览器端（打包为 dist/runtime/host.js、frame.js）
+│   │       └── runtime/               # 浏览器端（打包为 dist/runtime/host.js、frame.js、worker.js）
 │   │           ├── frame.ts           # 注入 iframe：全局变量、WeixinJSBridge、设备尺寸、触摸模拟
 │   │           ├── context.ts         # 3.7.1 起的基础库：模拟原生 WeixinJSContext，在逻辑层里创建子上下文
 │   │           ├── sdkStubs.ts        # 伴生 SDK（广告等）的占位
 │   │           ├── syncScript.ts      # 同步执行脚本（loadLibFiles）
+│   │           ├── workers.ts         # 逻辑层的原生 WeixinWorker：创建 Worker、收发消息
+│   │           ├── worker.ts          # Worker 里的原生接口
 │   │           └── host/
 │   │               ├── index.ts       # 宿主入口：读取构建信息、执行 setup、启动、处理热更新和整页刷新
 │   │               ├── Host.ts        # 宿主：消息分发、路由、页面栈
@@ -127,7 +129,7 @@ wxa-runner/
 │           └── server.ts              # 开发服务器参数，路径相对 Playwright 配置文件
 │
 ├── docs/                              # 使用文档，同时是 VitePress 文档站点
-├── examples/                          # showcase（覆盖主要功能）、hello-world、custom-tabbar、subpackages
+├── examples/                          # showcase（覆盖主要功能）、hello-world、custom-tabbar、subpackages、worker
 └── tests/
     ├── unit/                          # 解包、编译、项目解析、构建、文件监听、运行时纯逻辑、原生 API
     ├── integration/                   # DevServer 路由、网络代理
@@ -245,6 +247,8 @@ document.dispatchEvent(new CustomEvent("generateFuncReady", {
 }));
 ```
 
+**Worker 产物**：`workers` 目录下的 JS 不进逻辑层，同样每个文件一个 `define` 脚本（`workerModules`），由 Worker 的入口加载，见下文「Worker」。
+
 逻辑层的模板（`service-templates.js`）、渲染层的模板（`page-templates.js`）和样式（`page-styles.js`）也能单独取到，热更新时分别下发。
 样式和模板里的 `env(safe-area-inset-*)` 改写成 CSS 变量（`rewriteSafeAreaInsets`）。
 
@@ -259,6 +263,7 @@ document.dispatchEvent(new CustomEvent("generateFuncReady", {
 ├── iframe /__wxa__/appservice.html          逻辑层（隐藏，name 为 wxa-appservice）
 │     frame.js → WAService.js → 业务模块 → service-bootstrap.js
 │     （3.7.1 起：WAServiceMainContext.js，业务代码在子上下文 subcontext.html 里执行）
+│     └── Web Worker /__wxa__/worker.js?id=1     wx.createWorker 创建的 Worker
 ├── iframe /__wxa__/webview/pages/a/a.html?id=1   渲染层（每个页面一个）
 │     frame.js → WAWebview.js → page-frame.js → generateFuncReady
 └── iframe /__wxa__/webview/pages/b/b.html?id=2
@@ -270,7 +275,7 @@ document.dispatchEvent(new CustomEvent("generateFuncReady", {
 
 必须在基础库之前执行：
 
-1. **预置全局变量**：`__wxAppCode__`、`__wxRoute`、`WeixinWorker`、`__global` 等，基础库依赖它们
+1. **预置全局变量**：`__wxAppCode__`、`__wxRoute`、`__global` 等，基础库依赖它们；`WeixinWorker` 是 Worker 的原生接口，见下文「Worker」
 2. **`__passWAServiceGlobal__(globals)`**：部分版本的基础库初始化完成后通过它交出 `App` / `Page` / `Component` /
    `wx` / `define` / `require`（3.7.0 直接写到 `globalThis`）
 3. **WeixinJSBridge**：基础库检测到已存在的全局 `WeixinJSBridge` 时直接使用它
@@ -455,6 +460,31 @@ bootstrap 每次 require 业务模块时先装一遍（`installApiStubs` 幂等�
 不给 `SkylineGlobal` / `NativeGlobal` / `xrFrame` / `WeixinJSContext` 这类全局打桩——
 基础库对它们做 `typeof` 检测，补上会让它走进依赖更多的分支，比缺失更糟。
 
+### Worker
+
+和开发者工具一样，`wx.createWorker` 创建的 Worker 是浏览器的 Web Worker。基础库两端都通过原生的 `WeixinWorker` 通信，
+宿主实现两端的原生接口：逻辑层的在 `runtime/workers.ts`，装在逻辑层 iframe 上（3.8 起创建 Worker 的代码在主上下文，也是这个 iframe）；
+Worker 里的在 `runtime/worker.ts`。
+
+```
+逻辑层基础库                         宿主                                   Worker 基础库（WAWorker.js）
+WeixinWorker.create("workers.js") → new Worker(/__wxa__/worker.js?id=)
+WeixinWorker.postMsgToWorker(id, json) → Worker.postMessage            → WeixinWorker.appServiceMsgHandler(msg)
+WeixinWorker.workerMsgHandler(id, msg) ← message                       ← WeixinWorker.postMsgToAppService(json)
+WeixinJSBridge.invoke 的实现（宿主）     ← invoke / → callback            ← workerInvokeJsApi(api, args, callbackId)
+```
+
+- **入口**：`/__wxa__/worker.js` 依次加载 `__wxConfig`、`runtime/worker.js`、`WAWorker.js` 和 `workers` 目录下的每个模块（`importScripts`，DevTools 里保留文件名和行号）。
+  `create` 收到的脚本名总是 `workers.js`，业务指定的入口由基础库随后发 `requireScript` 消息让 Worker 去 `require`
+- **没有配置 `workers`** 时 `create` 返回 -1，基础库报告 Worker 不存在。基础库加载后会从全局的 `__wxConfig` 里删掉 `workers`，所以在基础库之前读
+- **console**：Worker 基础库把 console 换成转发给逻辑层的版本，转发时对象被转成文本；和开发者工具一样加载完基础库后换回原来的，日志留在 Worker 里
+- **异常**：Worker 里没有被捕获的异常经消息交给宿主，记入测试 API 的 `errors()`
+- **Worker 里的原生接口**：基础库只在有 `workerInvokeJsApi` 时才创建业务代码用的 `worker` 对象。异步接口转给宿主的 API 注册表，
+  只放行基础库在 `create` 时给出的 `APIList`。基础库同步取结果的接口（`*Sync`，以及要同步拿到 taskId 的 `createRequestTask` 等）直接失败：
+  Worker 只能和页面异步通信，开发者工具用 SharedArrayBuffer 阻塞等待，那要求整个页面跨源隔离（COOP / COEP），跨域的图片等资源都会加载不了
+- **Worker 分包**（`workers.isSubpackage`）：`wx.preDownloadSubpackage({ packageType: 'workers' })` 发的分包加载任务模块名是 `/workers.js`，
+  只在配置为分包时成功，与开发者工具一致
+
 ---
 
 ## 热更新
@@ -534,7 +564,8 @@ bootstrap 每次 require 业务模块时先装一遍（`installApiStubs` 幂等�
 | `/__wxa__/appservice.html?path=&query=` | 逻辑层；`path` 写入 `appLaunchInfo` |
 | `/__wxa__/subcontext.html?id=` | 3.7.1 起逻辑层里的子上下文 |
 | `/__wxa__/webview/<page>.html?id=` | 渲染层 |
-| `/__wxa__/module/<file>.js` | 单个业务模块 |
+| `/__wxa__/module/<file>.js` | 单个业务模块，包括 `workers` 目录下的 |
+| `/__wxa__/worker.js?id=` | Worker 的入口 |
 | `/__wxa__/service-bootstrap.js`、`/__wxa__/page-frame.js` | 构建产物 |
 | `/__wxa__/service-templates.js`、`page-templates.js`、`page-styles.js` | 两层的模板和渲染层的样式，热更新时重新下发 |
 | `/__baselib__/*` | 基础库；`*.js.map` 是把它加入 DevTools 忽略列表的 source map |

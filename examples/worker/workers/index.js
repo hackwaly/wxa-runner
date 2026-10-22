@@ -8,6 +8,9 @@ worker.onMessage(message => {
     case 'echo':
       worker.postMessage({ type: 'echo', payload: message.payload });
       break;
+    case 'binary':
+      worker.postMessage({ type: 'binary', buffer: new Uint8Array(message.buffer).map(n => n * 2).buffer });
+      break;
     case 'sum':
       worker.postMessage({ type: 'sum', result: sum(message.numbers) });
       break;

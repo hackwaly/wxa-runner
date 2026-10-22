@@ -36,6 +36,12 @@ describe.skipIf(!e2eReady)('Worker', () => {
           await expectText(frame, '#echo-reply', JSON.stringify({ text: '你好', list: [1, { deep: true }] }));
         });
 
+        it('页面和 Worker 之间传的 ArrayBuffer 收到时仍是原来的字节', async () => {
+          const frame = await runner.open('/');
+          await frame.click('#binary');
+          await expectText(frame, '#binary-reply', '2,4,6');
+        });
+
         it('Worker 代码引用同目录下的模块，算出的结果回到页面', async () => {
           const frame = await runner.open('/');
           await frame.click('#sum');
@@ -81,27 +87,27 @@ describe.skipIf(!e2eReady)('Worker', () => {
         });
       });
 
-      it('没有配置 workers 时，wx.createWorker 报告 Worker 不存在', async () => {
+      it('没有配置 workers 时，wx.createWorker 不返回 Worker，控制台报告 Worker 不存在', async () => {
+        // 基础库捕获了创建失败的异常，只在控制台报告，业务代码捕获不到，与开发者工具一致
         const runner = await startRunner({
           'app.json': { pages: ['pages/index/index'] },
           'pages/index/index.json': {},
-          'pages/index/index.wxml': '<view id="error">{{error}}</view>',
+          'pages/index/index.wxml': '<view id="result">{{result}}</view>',
           'pages/index/index.js': `
 Page({
-  data: { error: '' },
+  data: { result: '' },
   onLoad() {
-    try {
-      wx.createWorker('workers/index.js');
-      this.setData({ error: '没有报错' });
-    } catch (error) {
-      this.setData({ error: error.message });
-    }
+    const worker = wx.createWorker('workers/index.js');
+    this.setData({ result: worker ? '返回了 Worker' : '没有返回 Worker' });
   }
 });`
         }, { baseLibVersion: version });
+        const logs: string[] = [];
+        runner.page.on('console', message => logs.push(message.text()));
         try {
           const frame = await runner.open('/');
-          await expectText(frame, '#error', /Worker "workers\/index\.js" does not exists/);
+          await expectText(frame, '#result', '没有返回 Worker');
+          expect(logs).toContainEqual(expect.stringContaining('Worker "workers/index.js" does not exists'));
         } finally {
           await runner.close();
         }

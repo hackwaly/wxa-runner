@@ -13,9 +13,9 @@ export default defineConfig([
     shims: true,
     external: ['express', 'chokidar', 'ws', 'esbuild', '@open-wxa/wxa-runner-compiler', '@open-wxa/wxa-runner-extractor']
   },
-  // 浏览器端：宿主页面与注入 iframe 的桥
+  // 浏览器端：宿主页面、注入 iframe 的桥、Worker 里的原生接口
   {
-    entry: { 'runtime/host': 'src/runtime/host/index.ts', 'runtime/frame': 'src/runtime/frame.ts' },
+    entry: { 'runtime/host': 'src/runtime/host/index.ts', 'runtime/frame': 'src/runtime/frame.ts', 'runtime/worker': 'src/runtime/worker.ts' },
     format: ['iife'],
     platform: 'browser',
     target: 'es2020',

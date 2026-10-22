@@ -56,3 +56,19 @@ export interface AppInfo {
   /** 配置了 setup 文件时存在；error 是 setup 的编译错误 */
   setup?: { env: Record<string, string>; error?: string };
 }
+
+/** 逻辑层发给 Worker 的消息（runtime/workers.ts → runtime/worker.ts） */
+export type ToWorkerMessage =
+  /** 逻辑层基础库发来的消息，交给 Worker 基础库 */
+  | { type: 'message'; data: unknown }
+  /** Worker 里调用原生接口的结果 */
+  | { type: 'callback'; callbackId: number; result: unknown };
+
+/** Worker 发给逻辑层的消息 */
+export type FromWorkerMessage =
+  /** Worker 基础库发出的消息，交给逻辑层基础库 */
+  | { type: 'message'; data: unknown }
+  /** Worker 里调用原生接口 */
+  | { type: 'invoke'; api: string; args: unknown; callbackId: number }
+  /** Worker 里没有被捕获的异常 */
+  | { type: 'error'; message: string; stack?: string };

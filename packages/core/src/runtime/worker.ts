@@ -1,0 +1,53 @@
+/**
+ * Worker 里的原生接口，在 Worker 基础库（WAWorker.js）之前执行，见 server/html.ts 的 workerScript
+ *
+ * 和开发者工具一样，Worker 是浏览器的 Web Worker，逻辑层那一端见 runtime/workers.ts：
+ * - WeixinWorker.postMsgToAppService：Worker 基础库发往逻辑层的消息
+ * - 逻辑层发来的消息交给 WeixinWorker.appServiceMsgHandler。基础库加载时把全局的 WeixinWorker 换成了自己的包装，处理函数在包装上
+ * - workerInvokeJsApi：Worker 里的接口（worker.getFileSystemManager 等）调用原生，结果经 WeixinJSBridge.invokeCallbackHandler 交回。
+ *   Worker 基础库只在有它时才创建业务代码用的 worker 对象
+ *
+ * Worker 只能和页面异步收发消息。基础库同步取结果的接口（*Sync，以及要同步拿到 taskId 的 createRequestTask 等），
+ * 开发者工具用 SharedArrayBuffer 阻塞等待，那要求整个页面跨源隔离（COOP / COEP），跨域的图片等资源都会加载不了，所以这里直接失败
+ */
+
+import type { FromWorkerMessage, ToWorkerMessage } from './types';
+
+const scope = self as any;
+
+/** 不以 Sync 结尾、但基础库同步取结果的接口，与开发者工具一致 */
+const SYNC_APIS = new Set([
+  'getSystemInfo', 'getBackgroundAudioState', 'setBackgroundAudioState', 'operateBackgroundAudio',
+  'createRequestTask', 'createUploadTask', 'createDownloadTask', 'createSocketTask', 'operateSocketTask',
+  'createAudioInstance', 'unlink'
+]);
+
+const send = (message: FromWorkerMessage) => scope.postMessage(message);
+const parse = (value: unknown) => (typeof value === 'string' ? JSON.parse(value) : value);
+
+scope.WeixinWorker = {
+  __workerId__: Number(new URLSearchParams(location.search).get('id')),
+  postMsgToAppService(message: string) {
+    send({ type: 'message', data: parse(message) });
+  }
+};
+
+scope.workerInvokeJsApi = (api: string, args: unknown, callbackId: number) => {
+  if (SYNC_APIS.has(api) || api.endsWith('Sync')) {
+    return { errMsg: `${api}:fail wxa-runner 的 Worker 里不支持同步接口` };
+  }
+  send({ type: 'invoke', api, args: parse(args), callbackId });
+  return undefined;
+};
+
+scope.addEventListener('message', ({ data }: MessageEvent<ToWorkerMessage>) => {
+  if (data.type === 'message') scope.WeixinWorker.appServiceMsgHandler(data.data);
+  else scope.WeixinJSBridge.invokeCallbackHandler(data.callbackId, data.result);
+});
+
+const reportError = (error: unknown) => {
+  const err = typeof (error as Error | null)?.message === 'string' ? error as Error : null;
+  send({ type: 'error', message: err ? err.message : String(error), stack: typeof err?.stack === 'string' ? err.stack : undefined });
+};
+scope.addEventListener('error', (event: ErrorEvent) => reportError(event.error ?? event.message));
+scope.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => reportError(event.reason));

@@ -14,7 +14,7 @@ wxa-runner 是微信小程序的 E2E 测试和调试工具：在普通的 Chrome
 
 ## 能替代微信开发者工具吗？
 
-不能。预览、上传、真机调试仍然要用开发者工具，插件、Worker 也暂不支持。
+不能。预览、上传、真机调试仍然要用开发者工具，插件也暂不支持。
 wxa-runner 用在本地开发调试和跑自动化测试上，区别见[功能与限制](./features.md#和微信开发者工具的区别)。
 
 ## 和 miniprogram-automator 有什么区别？
@@ -97,5 +97,5 @@ await miniProgram.route('GET **/api/feed', { body: { list: [] } });
 
 ## 支持插件、Worker、蓝牙吗？
 
-不支持。插件、Worker 见 [#10](https://github.com/open-wxa/wxa-runner/issues/10)，
+Worker 支持，但 Worker 里不能用同步接口和网络请求。插件、蓝牙不支持，插件见 [#56](https://github.com/open-wxa/wxa-runner/issues/56)，
 其他不支持的能力见[已知限制](./features.md#已知限制)。用到这些能力的页面，可以在开发者工具里用 miniprogram-automator 测试。

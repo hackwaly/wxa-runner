@@ -12,6 +12,7 @@
 import { installWeixinJSContext } from './context';
 import { installApiStubs } from './sdkStubs';
 import type { FrameBridge, FrameKind, HostApi } from './types';
+import { createWeixinWorker } from './workers';
 
 type Listener = (data: unknown, webviewId?: number) => void;
 
@@ -35,7 +36,8 @@ if (kind === 'service') {
     global: {},
     __workerVendorCode__: {},
     __workersCode__: {},
-    WeixinWorker: {},
+    // 创建 Worker 的基础库代码在逻辑层 iframe 里（3.8 起是主上下文），子上下文用不到
+    WeixinWorker: subContextId ? {} : createWeixinWorker(window, host),
     $gwx: undefined
   });
   g.__WeixinWorker = g.WeixinWorker;

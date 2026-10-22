@@ -4,6 +4,11 @@
   <view id="echo-reply">{{echo}}</view>
 </view>
 <view class="section">
+  <view class="title">二进制数据</view>
+  <button id="binary" bindtap="binary">把字节交给 Worker 翻倍</button>
+  <view id="binary-reply">{{binary}}</view>
+</view>
+<view class="section">
   <view class="title">Worker 引用同目录下的模块</view>
   <button id="sum" bindtap="sum">让 Worker 求 1 到 100 的和</button>
   <view id="sum-reply">{{sum}}</view>

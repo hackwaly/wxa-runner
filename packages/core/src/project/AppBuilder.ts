@@ -12,6 +12,8 @@
  *   2. wcsc 的公共样式运行时 + app.wxss，与每个页面/组件的 __wxAppCode__ wxss（pageStyles）
  *   两部分在热更新时分别下发
  *   样式和模板里的 env(safe-area-inset-*) 改写成 CSS 变量，见 rewriteSafeAreaInsets
+ *
+ * Worker：workers 目录下的 JS 不进逻辑层，同样包装成 define 脚本，由 Worker 入口（server/html.ts 的 workerScript）加载
  */
 
 import { compileWxml, compileWxss, ComponentTags } from '@open-wxa/wxa-runner-compiler';
@@ -24,6 +26,8 @@ export interface BuildResult {
   wxConfig: Record<string, any>;
   /** 所有 JS 模块 id（如 "pages/index/index.js"），逻辑层按此顺序加载 define 脚本 */
   modules: string[];
+  /** workers 目录下的 JS 模块 id，Worker 按此顺序加载 define 脚本 */
+  workerModules: string[];
   /** 逻辑层的 $gwx 与 __wxAppCode__ json/wxml，不含 require */
   serviceTemplates: string;
   serviceBootstrap: string;
@@ -151,8 +155,10 @@ export class AppBuilder {
       this.wxmlCache = wxml;
       this.wxssCache = wxss;
 
-      const workersDir = typeof app.workers === 'string' ? app.workers : app.workers?.path;
-      const modules = this.project.listFiles(['.js'], workersDir ? [workersDir] : []);
+      const workersDir = this.project.workersDir(app);
+      const inWorkers = (file: string) => workersDir !== null && file.startsWith(workersDir + '/');
+      const scripts = this.project.listFiles(['.js']);
+      const modules = scripts.filter(file => !inWorkers(file));
 
       const serviceTemplates = this.createTemplates(app, units, unitJson, wxml.cut);
       const pageTemplates = this.createTemplates(app, units, unitJson, wxml.full);
@@ -167,6 +173,7 @@ export class AppBuilder {
           subPackages: this.project.subPackages(app)
         }),
         modules,
+        workerModules: scripts.filter(inWorkers),
         serviceTemplates,
         serviceBootstrap: this.createServiceBootstrap(serviceTemplates, units, modules),
         pageFrame: `${pageTemplates}\n${pageStyles}`,

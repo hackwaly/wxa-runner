@@ -102,6 +102,7 @@ See [docs/testing.md](./docs/testing.md) (in Chinese) for configuration, mocking
 | Rendering | WXML, WXSS, WXS, custom components, App / Page / Component lifecycles |
 | Routing | navigateTo, redirectTo and the other page routes, a 10-level page stack, tab bar |
 | Subpackages | Regular and independent subpackages, preloading (preloadRule), async subpackages: components (componentPlaceholder) and JS (require.async) from other subpackages. All code is loaded at startup, with nothing to download |
+| Workers | wx.createWorker: messages both ways (ArrayBuffers included), terminate, workers as a subpackage. Asynchronous file APIs work inside a worker |
 | UI | Navigation bar, tab bar (custom tab bars included), toast / modal / actionSheet; iPhone X by default |
 | Components | picker, canvas, camera, video, map (needs network access), web-view |
 | Media | chooseImage, chooseMedia (images and videos) and chooseVideo pick files through the browser; previewImage, getImageInfo; saving to the album downloads the image; InnerAudioContext plays audio |
@@ -117,7 +118,8 @@ CI covers only the bundled 3.7.0; the other versions are checked locally with `W
 - Unimplemented native APIs return success; tests can catch them through `errors()` (see [docs/testing.md](./docs/testing.md#检查运行时错误))
 - No Bluetooth or other device capabilities
 - A few `MapContext` methods of the map component, such as `toScreenLocation`, `fromScreenLocation` and ground overlays, are missing from the base library's web implementation and never call back (see [PROJECT_DESIGN.md](./PROJECT_DESIGN.md#原生组件))
-- No plugins or Workers ([#10](https://github.com/open-wxa/wxa-runner/issues/10))
+- No plugins ([#56](https://github.com/open-wxa/wxa-runner/issues/56))
+- Inside a worker only asynchronous APIs work: synchronous ones such as `readFileSync` throw, and `request`, `downloadFile`, `uploadFile` and `connectSocket` fail, because the base library needs their task IDs synchronously. A worker can only talk to the page asynchronously; waiting synchronously would need the whole page to be cross-origin isolated, which would block cross-origin images and other resources
 - Without WeChat DevTools (on Linux or in CI, say): x86-64 only; the compiler is older, with small template-runtime differences (such as a limit of 16,000 nodes per page); the region picker is unavailable
 
 ## Contributing

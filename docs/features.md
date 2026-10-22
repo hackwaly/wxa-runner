@@ -15,7 +15,7 @@ wxa-runner 用的是和开发者工具同一套官方基础库，渲染、组件
 | 自动化测试 | Playwright 直接操作页面，Linux、CI 上也能跑 | 要远程控制开发者工具，只能在 Windows、macOS 上运行 |
 | 需要安装开发者工具 | 不需要，没装时用内置的基础库和编译器 | — |
 | 预览、上传、真机调试 | 不支持 | 支持 |
-| 插件、Worker | 不支持 | 支持 |
+| 插件 | 不支持 | 支持 |
 
 适合本地开发调试、跑自动化测试；发布相关的事情仍然在开发者工具里做。
 
@@ -34,6 +34,7 @@ wxa-runner 用的是和开发者工具同一套官方基础库，渲染、组件
 | 渲染 | WXML、WXSS、WXS、自定义组件，App / Page / Component 生命周期 |
 | 路由 | navigateTo、redirectTo 等页面路由，10 层页面栈，tabBar |
 | 分包 | 普通分包、独立分包，分包预下载（preloadRule），分包异步化：跨分包引用组件（componentPlaceholder）和 JS（require.async）。代码启动时全部加载，没有下载过程 |
+| Worker | wx.createWorker：和 Worker 互发消息（包括 ArrayBuffer）、terminate，workers 配置为分包。Worker 里能用异步的文件接口 |
 | 界面 | 导航栏、tabBar（包括自定义 tabBar）、toast / modal / actionSheet，默认模拟 iPhone X |
 | 组件 | picker、canvas、camera、video、map（需要联网）、web-view |
 | 媒体 | chooseImage、chooseMedia（图片和视频）、chooseVideo 由浏览器选文件，previewImage、getImageInfo，保存到相册即下载；InnerAudioContext 播放音频 |
@@ -51,5 +52,8 @@ wxa-runner 用的是和开发者工具同一套官方基础库，渲染、组件
 - **设备能力**：不支持蓝牙等设备能力
 - **地图**：MapContext 的 toScreenLocation、fromScreenLocation、地面覆盖物等方法在基础库的网页实现里没有，调用后不会回调
   （详见[设计文档](https://github.com/open-wxa/wxa-runner/blob/main/PROJECT_DESIGN.md#原生组件)）
-- **小程序能力**：不支持插件、Worker（[#10](https://github.com/open-wxa/wxa-runner/issues/10)）
+- **插件**：不支持（[#56](https://github.com/open-wxa/wxa-runner/issues/56)）
+- **Worker 里的接口**：只能用异步接口，如 FileSystemManager 的 readFile、writeFile。同步接口（readFileSync 等）调用时报错；
+  request、downloadFile、uploadFile、connectSocket 也不能用，基础库要同步拿到它们的任务编号。Worker 和页面之间只能异步通信，
+  同步等结果要求整个页面跨源隔离，跨域的图片等资源会因此加载不了
 - **没有开发者工具时**（如 Linux、CI）：只支持 x86-64；编译器版本较旧，模板运行时有少量差异（如单页最多 16000 个节点）；地区选择器不可用
