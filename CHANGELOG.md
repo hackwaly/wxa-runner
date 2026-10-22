@@ -1,5 +1,13 @@
 # 更新日志
 
+## [0.7.0](https://github.com/open-wxa/wxa-runner/compare/v0.6.0...v0.7.0) (2026-10-22)
+
+
+### 新功能
+
+* --real-login 时真实调用服务市场 wx.serviceMarket ([#60](https://github.com/open-wxa/wxa-runner/issues/60)) ([8caced3](https://github.com/open-wxa/wxa-runner/commit/8caced388545bc00c00ac84e066b2bdd815a0a26))
+* 支持插件页面（plugin://），--real-login 改名为 --devtools-login ([#62](https://github.com/open-wxa/wxa-runner/issues/62)) ([c2acebc](https://github.com/open-wxa/wxa-runner/commit/c2acebc9f58893100a9188f58f22ca0c17855bc9))
+
 ## [0.6.0](https://github.com/open-wxa/wxa-runner/compare/v0.5.0...v0.6.0) (2026-10-22)
 
 
