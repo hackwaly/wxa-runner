@@ -13,8 +13,7 @@ import { e2eReady, expectText, installedBaseLibs, Runner, startRunner, VERIFIED_
 /** 等一段时间，确认这段时间里没有回复 */
 const NO_REPLY_WAIT = 1000;
 
-const errorMessages = (runner: Runner) =>
-  runner.page.evaluate(() => window.__wxa_test_api__.errors().map(error => error.message));
+const errorMessages = (runner: Runner) => runner.page.evaluate(() => window.__wxa_test_api__.errors().map(error => error.message));
 
 describe.skipIf(!e2eReady)('Worker', () => {
   for (const version of VERIFIED_BASELIBS) {
@@ -78,11 +77,13 @@ describe.skipIf(!e2eReady)('Worker', () => {
           const frame = await runner.open('/');
           expect(await errorMessages(runner)).toEqual([]);
           await frame.click('#crash');
-          await runner.page.waitForFunction(
-            () => window.__wxa_test_api__.errors().some(error => error.message.includes('Worker 处理消息时出错')),
-            undefined,
-            { timeout: 5000 }
-          ).catch(() => undefined);
+          await runner.page
+            .waitForFunction(
+              () => window.__wxa_test_api__.errors().some(error => error.message.includes('Worker 处理消息时出错')),
+              undefined,
+              { timeout: 5000 }
+            )
+            .catch(() => undefined);
           expect(await errorMessages(runner)).toContainEqual(expect.stringContaining('Worker 处理消息时出错'));
           await expectText(frame, '#worker-error', 'Worker 处理消息时出错');
         });
@@ -90,11 +91,12 @@ describe.skipIf(!e2eReady)('Worker', () => {
 
       it('没有配置 workers 时，wx.createWorker 不返回 Worker，控制台报告 Worker 不存在', async () => {
         // 基础库捕获了创建失败的异常，只在控制台报告，业务代码捕获不到，与开发者工具一致
-        const runner = await startRunner({
-          'app.json': { pages: ['pages/index/index'] },
-          'pages/index/index.json': {},
-          'pages/index/index.wxml': '<view id="result">{{result}}</view>',
-          'pages/index/index.js': `
+        const runner = await startRunner(
+          {
+            'app.json': { pages: ['pages/index/index'] },
+            'pages/index/index.json': {},
+            'pages/index/index.wxml': '<view id="result">{{result}}</view>',
+            'pages/index/index.js': `
 Page({
   data: { result: '' },
   onLoad() {
@@ -102,7 +104,9 @@ Page({
     this.setData({ result: worker ? '返回了 Worker' : '没有返回 Worker' });
   }
 });`
-        }, { baseLibVersion: version });
+          },
+          { baseLibVersion: version }
+        );
         const logs: string[] = [];
         runner.page.on('console', message => logs.push(message.text()));
         try {
@@ -115,11 +119,12 @@ Page({
       });
 
       it('workers 配置为分包时，预下载 Worker 分包成功，之后创建的 Worker 照常通信', async () => {
-        const runner = await startRunner({
-          'app.json': { pages: ['pages/index/index'], workers: { path: 'workers', isSubpackage: true } },
-          'pages/index/index.json': {},
-          'pages/index/index.wxml': '<view id="reply">{{reply}}</view>',
-          'pages/index/index.js': `
+        const runner = await startRunner(
+          {
+            'app.json': { pages: ['pages/index/index'], workers: { path: 'workers', isSubpackage: true } },
+            'pages/index/index.json': {},
+            'pages/index/index.wxml': '<view id="reply">{{reply}}</view>',
+            'pages/index/index.js': `
 Page({
   data: { reply: '' },
   onLoad() {
@@ -134,8 +139,10 @@ Page({
     });
   }
 });`,
-          'workers/index.js': "worker.onMessage(message => worker.postMessage({ text: message.text + ' pong' }));"
-        }, { baseLibVersion: version });
+            'workers/index.js': "worker.onMessage(message => worker.postMessage({ text: message.text + ' pong' }));"
+          },
+          { baseLibVersion: version }
+        );
         try {
           const frame = await runner.open('/');
           await expectText(frame, '#reply', 'ping pong');

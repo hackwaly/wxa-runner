@@ -17,8 +17,15 @@ const scope = self as any;
 
 /** 不以 Sync 结尾、但基础库同步取结果的接口。开发者工具的列表里还有 unlink，那是异步接口，Worker 里的 fs.unlink 照常可用 */
 const SYNC_APIS = new Set([
-  'getSystemInfo', 'getBackgroundAudioState', 'setBackgroundAudioState', 'operateBackgroundAudio',
-  'createRequestTask', 'createUploadTask', 'createDownloadTask', 'createSocketTask', 'operateSocketTask',
+  'getSystemInfo',
+  'getBackgroundAudioState',
+  'setBackgroundAudioState',
+  'operateBackgroundAudio',
+  'createRequestTask',
+  'createUploadTask',
+  'createDownloadTask',
+  'createSocketTask',
+  'operateSocketTask',
   'createAudioInstance'
 ]);
 
@@ -47,7 +54,7 @@ scope.addEventListener('message', ({ data }: MessageEvent<ToWorkerMessage>) => {
 });
 
 const reportError = (error: unknown) => {
-  const err = typeof (error as Error | null)?.message === 'string' ? error as Error : null;
+  const err = typeof (error as Error | null)?.message === 'string' ? (error as Error) : null;
   send({ type: 'error', message: err ? err.message : String(error), stack: typeof err?.stack === 'string' ? err.stack : undefined });
 };
 scope.addEventListener('error', (event: ErrorEvent) => reportError(event.error ?? event.message));

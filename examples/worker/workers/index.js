@@ -19,16 +19,18 @@ worker.onMessage(message => {
         filePath: notePath,
         data: 'Worker 写入的内容',
         encoding: 'utf8',
-        success: () => fs.readFile({
-          filePath: notePath,
-          encoding: 'utf8',
-          success: ({ data }) => fs.unlink({
+        success: () =>
+          fs.readFile({
             filePath: notePath,
-            success: () => worker.postMessage({ type: 'file', content: `${data}（已删除）` }),
+            encoding: 'utf8',
+            success: ({ data }) =>
+              fs.unlink({
+                filePath: notePath,
+                success: () => worker.postMessage({ type: 'file', content: `${data}（已删除）` }),
+                fail: ({ errMsg }) => worker.postMessage({ type: 'file', errMsg })
+              }),
             fail: ({ errMsg }) => worker.postMessage({ type: 'file', errMsg })
           }),
-          fail: ({ errMsg }) => worker.postMessage({ type: 'file', errMsg })
-        }),
         fail: ({ errMsg }) => worker.postMessage({ type: 'file', errMsg })
       });
       break;
