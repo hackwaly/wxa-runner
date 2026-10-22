@@ -19,11 +19,11 @@ export function createProject(files: Record<string, string | object>): string {
   return root;
 }
 
-/** 按 .wxvpkg 格式打包，用于测试解包器 */
-export function packWxvpkg(files: Record<string, string>): Buffer {
+/** 按 .wxvpkg 格式打包（基础库、插件代码包都是这个格式），Buffer 原样写入 */
+export function packWxvpkg(files: Record<string, string | Buffer>): Buffer {
   const entries = Object.entries(files).map(([name, content]) => ({
     name: Buffer.from(name, 'utf8'),
-    data: Buffer.from(content, 'utf8')
+    data: Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8')
   }));
   const indexSize = 4 + entries.reduce((sum, entry) => sum + 12 + entry.name.length, 0);
   const header = Buffer.alloc(14);
