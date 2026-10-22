@@ -146,6 +146,17 @@ describe.skipIf(!ready)('插件代码', () => {
     expect(warnings.join('\n')).toMatch(/插件 hello（wxplugin00000001@1\.0\.0）.*--devtools-login/);
   });
 
+  it('下载插件时开发者的登录态已失效，终端提示去开发者工具重新登录', async () => {
+    const { get, warnings } = await start({
+      devtoolsLogin: true,
+      wechat: () => new Response(JSON.stringify({ baseresponse: { errcode: 40001, errmsg: 'invalid credential' } }))
+    });
+
+    await get('/__wxa__/app-info.json');
+
+    expect(warnings.join('\n')).toMatch(/插件 hello（wxplugin00000001@1\.0\.0）.*40001.*请在微信开发者工具里重新登录/);
+  });
+
   it('旧选项 realLogin（--real-login）照常生效，终端提示改用 devtoolsLogin（--devtools-login）', async () => {
     const { get, downloads, warnings } = await start({ realLogin: true });
 
