@@ -1,0 +1,2 @@
+# Windows 上 core.autocrlf=true 时也按 LF 检出：测试和脚本按 \n 切分文件内容
+* text=auto eol=lf

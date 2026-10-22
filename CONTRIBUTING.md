@@ -25,18 +25,22 @@ pnpm test            # 单元 + 集成 + e2e
 pnpm test:playwright # tests/playwright，用 Playwright 的 test runner 跑，需要先 pnpm build
 pnpm test:coverage
 WXA_BASELIB=3.8.8 pnpm test  # 在指定的基础库版本上跑全部测试（不指定时用默认选中的版本）
+pnpm lint            # oxlint，有警告也算失败，CI 会跑
+pnpm format <文件>   # oxfmt 格式化指定的 ts/js 文件
 
 node packages/cli/bin/wxa-runner.js dev examples/showcase --open   # 用源码运行示例
 ```
 
 - 找不到编译器、基础库或 Chrome 时，依赖它们的用例会自动跳过；`pnpm test:playwright` 不跳过，找不到时直接报错
-- e2e 默认使用 `/Applications/Google Chrome.app`，其他位置通过环境变量 `WXA_CHROME` 指定，如 Linux 上
+- e2e 默认使用 Chrome 的默认安装位置（macOS 的 `/Applications/Google Chrome.app`，Windows 的 `Program Files`、`%LOCALAPPDATA%` 下的 `chrome.exe`），其他位置通过环境变量 `WXA_CHROME` 指定，如 Linux 上
   `WXA_CHROME=/usr/bin/google-chrome pnpm test`
 - 本机没有开发者工具时，`pnpm install` 装上的内置基础库和 miniprogram-compiler 就够跑全部测试
+- 现有代码是手工排版的，CI 不检查格式，也不要整仓库跑 `pnpm format`：只格式化自己新写或大改的文件，
+  配置在 `.oxfmtrc.json`
 
 ## CI
 
-[.github/workflows/ci.yml](./.github/workflows/ci.yml) 在 ubuntu-latest 上跑全部测试（`pnpm test` 和 `pnpm test:playwright`），
+[.github/workflows/ci.yml](./.github/workflows/ci.yml) 跑 `pnpm lint`，并在 ubuntu-latest 上跑全部测试（`pnpm test` 和 `pnpm test:playwright`），
 测试前先确认编译器、基础库和 Chrome 都找得到：缺少时依赖它们的用例会自动跳过，CI 却显示通过。
 最后用 `node scripts/release.mjs --dry-run` 打包全部 npm 包，像外部用户一样在新目录里用 npm 安装，确认
 `wxa-runner dev` 能启动示例项目、用上内置基础库和 miniprogram-compiler。

@@ -18,5 +18,3 @@ declare global {
     __wxa_before_launch__?: (api: WxaTestApi) => unknown;
   }
 }
-
-export {};

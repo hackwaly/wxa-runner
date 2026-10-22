@@ -9,9 +9,13 @@ import path from 'path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../helpers';
 
-/** @returns 退出码，0 为通过 */
+/** 用 node 直接运行入口：node_modules/.bin 下的 shim 在 Windows 上没法 spawn。@returns 退出码，0 为通过 */
 const commitlint = (message: string) =>
-  spawnSync(path.join(REPO_ROOT, 'node_modules/.bin/commitlint'), [], { cwd: REPO_ROOT, input: message, encoding: 'utf8' }).status;
+  spawnSync(process.execPath, [path.join(REPO_ROOT, 'node_modules/@commitlint/cli/cli.js')], {
+    cwd: REPO_ROOT,
+    input: message,
+    encoding: 'utf8'
+  }).status;
 
 /** 有参数时检查这些分支名，没有时像 pre-push hook 一样从标准输入读推送的 ref；@returns 退出码，0 为通过 */
 const checkBranch = (names: string[], pushedRefs = '') =>

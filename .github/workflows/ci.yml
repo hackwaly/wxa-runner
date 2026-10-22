@@ -37,6 +37,24 @@ jobs:
           BRANCH: ${{ github.head_ref }}
         run: node scripts/check-branch-name.mjs "$BRANCH"
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+
   test:
     # Linux 上没有微信开发者工具：编译器用 miniprogram-compiler 的 Linux 版，基础库用 @open-wxa/wxa-baselib
     runs-on: ubuntu-latest
