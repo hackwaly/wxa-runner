@@ -1,5 +1,5 @@
 /**
- * 端到端：业务代码调用 wx.serviceMarket.invokeService（--real-login）
+ * 端到端：业务代码调用 wx.serviceMarket.invokeService（--devtools-login）
  *
  * 基础库把调用交给原生 operateWXData，开发服务器再转发给微信。这里用 page.route 返回实测的微信响应，
  * 验证基础库能从中解析出 invokeService 的结果，不依赖本机登录态和服务市场的额度。
@@ -40,7 +40,7 @@ describe.skipIf(!e2eReady || !BASELIB)('服务市场 wx.serviceMarket', () => {
       'pages/index/index.json': {},
       'pages/index/index.wxml': '<button id="invoke" bindtap="onInvoke">调用</button><view id="result">{{result}}</view>',
       'pages/index/index.js': PAGE_JS
-    }, { realLogin: true, baseLibVersion: BASELIB });
+    }, { devtoolsLogin: true, baseLibVersion: BASELIB });
   });
 
   afterAll(async () => {

@@ -1,5 +1,5 @@
 /**
- * 端到端：真实登录（--real-login）失败时，宿主页面在手机外面提示开发者
+ * 端到端：开发者工具登录态（--devtools-login）失败时，宿主页面在手机外面提示开发者
  *
  * 登录态过期这类问题出在开发环境，不是小程序的 bug：业务代码照常收到 fail，
  * 同时页面上要有提示，否则开发者只能翻控制台或 Network 才知道为什么登录不上。
@@ -20,7 +20,7 @@ Page({
 });
 `;
 
-describe.skipIf(!e2eReady)('真实登录失败的提示', () => {
+describe.skipIf(!e2eReady)('开发者工具登录态失败的提示', () => {
   let runner: Runner;
 
   beforeAll(async () => {
@@ -31,7 +31,7 @@ describe.skipIf(!e2eReady)('真实登录失败的提示', () => {
       'pages/index/index.json': {},
       'pages/index/index.wxml': '<button id="login" bindtap="onLogin">登录</button><view id="result">{{result}}</view>',
       'pages/index/index.js': PAGE_JS
-    }, { realLogin: true });
+    }, { devtoolsLogin: true });
   });
 
   afterAll(async () => {

@@ -1,7 +1,7 @@
 /**
  * 端到端：打开插件页面（plugin://别名/页面）
  *
- * 插件代码由开发服务器借开发者的登录态向微信下载（--real-login）。这里把对微信的下载请求换成
+ * 插件代码由开发服务器借开发者的登录态向微信下载（--devtools-login）。这里把对微信的下载请求换成
  * 模拟的插件代码包（tests/fakePlugin.ts），其余请求照常发出。
  */
 
@@ -64,7 +64,7 @@ describe.skipIf(!e2eReady)('插件页面', () => {
 <navigator id="link" url="plugin://hello/hello?num=from-navigator">链接</navigator>
 <view id="result">{{result}}</view>`,
       'pages/index/index.js': PAGE_JS
-    }, { realLogin: true });
+    }, { devtoolsLogin: true });
   });
 
   afterAll(async () => {

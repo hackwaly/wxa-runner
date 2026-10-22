@@ -1,5 +1,5 @@
 /**
- * 真实登录接口：开发服务器带着开发者 ticket 向微信换取 code 和手机号
+ * 开发者工具登录态的接口：开发服务器带着开发者 ticket 向微信换取 code 和手机号
  *
  * 微信服务器用 fetch 桩代替，响应格式取自对微信服务器的实测；
  * 访问本地接口用 http.request，才能自定义 Host 头。
@@ -10,7 +10,7 @@ import { AddressInfo } from 'net';
 import express from 'express';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DeveloperTicket, TICKET_ENV } from '../../packages/extractor/src/devtools';
-import { realLoginRouter } from '../../packages/core/src/server/realLogin';
+import { devtoolsLoginRouter } from '../../packages/core/src/server/devtoolsLogin';
 import { collectSetupEnv } from '../../packages/core/src/server/setup';
 
 const LATER = Date.now() + 3600_000;
@@ -34,7 +34,7 @@ let ticket: DeveloperTicket | null = null;
 
 beforeAll(async () => {
   const app = express();
-  app.use('/__wxa__/api', realLoginRouter('wx-app', () => ticket));
+  app.use('/__wxa__/api', devtoolsLoginRouter('wx-app', () => ticket));
   server = app.listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
   port = (server.address() as AddressInfo).port;
@@ -69,7 +69,7 @@ function stubWechat(body: object) {
   return fetchMock;
 }
 
-describe('真实登录接口', () => {
+describe('开发者工具登录态的接口', () => {
   it('wx.login：用开发者 ticket 请求 jslogin，返回微信签发的 code', async () => {
     ticket = { newticket: 'a+b&c=d', expiredAt: LATER };
     const fetchMock = stubWechat({ baseresponse: { errcode: 0, errmsg: 'ok' }, code: '0e3LEm' });
@@ -140,7 +140,7 @@ describe('真实登录接口', () => {
     ticket = { newticket: 't', expiredAt: LATER };
     const fetchMock = stubWechat({ baseresponse: { errcode: 0 }, code: 'c' });
 
-    expect(await post('/login', { host: `evil.example:${port}` })).toEqual({ status: 403, body: { error: '真实登录接口只允许本机访问' } });
+    expect(await post('/login', { host: `evil.example:${port}` })).toEqual({ status: 403, body: { error: '开发者登录态接口只允许本机访问' } });
     expect(fetchMock).not.toHaveBeenCalled();
     expect((await post('/login', { host: `[::1]:${port}` })).status).toBe(200);
     expect((await post('/login', { host: `localhost:${port}` })).status).toBe(200);

@@ -38,7 +38,7 @@ describe.skipIf(!ready)('插件代码', () => {
   });
 
   /** 启动用到插件的小程序；wechat 决定微信对下载请求的响应 */
-  async function start(options: { realLogin: boolean; wechat?: () => Response }) {
+  async function start(options: { devtoolsLogin?: boolean; realLogin?: boolean; wechat?: () => Response }) {
     const downloads: Array<{ url: URL; body: any }> = [];
     const realFetch = globalThis.fetch;
     vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) => {
@@ -59,6 +59,7 @@ describe.skipIf(!ready)('插件代码', () => {
       }),
       port: 0,
       watch: false,
+      devtoolsLogin: options.devtoolsLogin,
       realLogin: options.realLogin,
       runtimeDir: RUNTIME_DIR,
       logger: { log: () => undefined, warn: (message: string) => warnings.push(message), error: (message: string) => warnings.push(message) }
@@ -69,7 +70,7 @@ describe.skipIf(!ready)('插件代码', () => {
   }
 
   it('用开发者的登录态向微信下载 app.json 里声明的插件，插件页面和它的窗口配置并入小程序', async () => {
-    const { get, downloads } = await start({ realLogin: true });
+    const { get, downloads } = await start({ devtoolsLogin: true });
 
     const info = await (await get('/__wxa__/app-info.json')).json();
 
@@ -83,7 +84,7 @@ describe.skipIf(!ready)('插件代码', () => {
   });
 
   it('插件代码只下载一次：再次打开小程序不再向微信下载', async () => {
-    const { get, downloads } = await start({ realLogin: true });
+    const { get, downloads } = await start({ devtoolsLogin: true });
 
     await get('/__wxa__/app-info.json');
     await get('/__wxa__/appservice.html');
@@ -95,7 +96,7 @@ describe.skipIf(!ready)('插件代码', () => {
   it('微信拒绝下载时，打开一次小程序只向微信请求一次，每个页面资源都按同一个结果处理；再次打开时重试', async () => {
     let attempts = 0;
     const { get, downloads, warnings } = await start({
-      realLogin: true,
+      devtoolsLogin: true,
       // 第一次拒绝，之后同意：同一次打开里后来的请求不能用上新结果，否则逻辑层和页面列表对不上
       wechat: () => (++attempts === 1
         ? new Response(JSON.stringify({ baseresponse: { errcode: 85016, errmsg: 'plugin not authorized' } }))
@@ -120,7 +121,7 @@ describe.skipIf(!ready)('插件代码', () => {
   });
 
   it('逻辑层在业务代码之前加载插件代码，插件页面的渲染层加载插件的模板和样式', async () => {
-    const { get } = await start({ realLogin: true });
+    const { get } = await start({ devtoolsLogin: true });
 
     const service = await (await get('/__wxa__/appservice.html')).text();
     const pluginScript = `/__wxa__/plugin/${PLUGIN}/1.0.0/appservice.js`;
@@ -135,19 +136,30 @@ describe.skipIf(!ready)('插件代码', () => {
     expect(await (await get(pageFrame)).text()).toContain(`$gwx_${PLUGIN}`);
   });
 
-  it('没开 --real-login 时不下载插件，终端提示怎么开启，小程序自己的页面照常可用', async () => {
-    const { get, downloads, warnings } = await start({ realLogin: false });
+  it('没开 --devtools-login 时不下载插件，终端提示怎么开启，小程序自己的页面照常可用', async () => {
+    const { get, downloads, warnings } = await start({ devtoolsLogin: false });
 
     const info = await (await get('/__wxa__/app-info.json')).json();
 
     expect(info.pages).toEqual(['pages/index/index']);
     expect(downloads).toHaveLength(0);
-    expect(warnings.join('\n')).toMatch(/插件 hello（wxplugin00000001@1\.0\.0）.*--real-login/);
+    expect(warnings.join('\n')).toMatch(/插件 hello（wxplugin00000001@1\.0\.0）.*--devtools-login/);
+  });
+
+  it('旧选项 realLogin（--real-login）照常生效，终端提示改用 devtoolsLogin（--devtools-login）', async () => {
+    const { get, downloads, warnings } = await start({ realLogin: true });
+
+    const info = await (await get('/__wxa__/app-info.json')).json();
+
+    expect(info.devtoolsLogin).toBe(true);
+    expect(info.pages).toContain(PLUGIN_PAGE);
+    expect(downloads).toHaveLength(1);
+    expect(warnings.join('\n')).toMatch(/realLogin（--real-login）已改名为 devtoolsLogin（--devtools-login）/);
   });
 
   it('微信拒绝下载时（如插件申请还没通过），终端说明是哪个插件和原因，小程序自己的页面照常可用', async () => {
     const { get, warnings } = await start({
-      realLogin: true,
+      devtoolsLogin: true,
       wechat: () => new Response(JSON.stringify({ baseresponse: { errcode: 85016, errmsg: 'plugin not authorized' } }))
     });
 
