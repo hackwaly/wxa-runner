@@ -182,6 +182,45 @@ describe('真实登录接口', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('插件校验：用开发者 ticket 请求 verifyplugin，返回插件能访问的域名', async () => {
+    ticket = { newticket: 't', expiredAt: LATER };
+    const list = [{ plugin_id: 'wxplugin', request_domain: ['https://api.example.com'], host_sign: 'sign' }];
+    const fetchMock = stubWechat({ baseresponse: { errcode: 0 }, list });
+
+    const request = { plugins: [{ provider: 'wxplugin', inner_version: 0 }] };
+    expect(await post('/verify-plugin', {}, { data: request })).toEqual({ status: 200, body: { data: { list } } });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(new URL(url).pathname).toBe('/wxa-dev-logic/verifyplugin');
+    // 与开发者工具一致：基础库给的 data 序列化后放在 ext_info 里
+    expect(JSON.parse(JSON.parse(init.body as string).ext_info)).toEqual(request);
+  });
+
+  it('插件信息：请求 batchgetcontact，按基础库要的格式交回每个插件的信息', async () => {
+    ticket = { newticket: 't', expiredAt: LATER };
+    const pluginList = [{ nickname: '快递跟踪', PluginNetWork: { RequestDomain: ['https://api.example.com'] } }];
+    const fetchMock = stubWechat({
+      baseresponse: { errcode: 0 },
+      contact_list: [{ appid: 'wxplugin', plugin_info: { plugin_list: pluginList } }, { appid: 'wxother' }]
+    });
+
+    expect(await post('/batch-get-contact', {}, { appIds: ['wxplugin', 'wxother'] })).toEqual({
+      status: 200,
+      body: { contactList: [{ appId: 'wxplugin', plugin_list: pluginList }] }
+    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(new URL(url).pathname).toBe('/wxa-dev-logic/batchgetcontact');
+    expect(JSON.parse(init.body as string)).toEqual({ appid_list: ['wxplugin', 'wxother'] });
+  });
+
+  it('插件校验：微信拒绝时说明原因和处理办法', async () => {
+    ticket = { newticket: 't', expiredAt: LATER };
+    stubWechat({ baseresponse: { errcode: 40001, errmsg: 'invalid credential' } });
+
+    const { status, body } = await post('/verify-plugin', {}, { data: {} });
+    expect(status).toBe(500);
+    expect(body.error).toBe('插件校验失败 40001: invalid credential（登录态已失效，请在微信开发者工具里重新登录）');
+  });
+
   it('开发者 ticket 的环境变量不会随 setup 下发给浏览器', () => {
     expect(collectSetupEnv({ [TICKET_ENV]: 'secret', WXA_NAME: 'dev' })).toEqual({ WXA_NAME: 'dev' });
   });

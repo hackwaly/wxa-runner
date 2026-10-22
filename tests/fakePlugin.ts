@@ -42,13 +42,17 @@ export async function packFakePlugin(appid: string, pages: FakePluginPage[]): Pr
       cut,
       genfuncName: gwx
     });
-  const [serviceGwx, pageGwx] = await Promise.all([compile(true), compile(false)]);
+  // 本机较新的 wcc 会在模板函数开头调用小程序的 $gwx('init')；微信下发的插件是旧版编译器编的，没有这一行
+  const [serviceGwx, pageGwx] = (await Promise.all([compile(true), compile(false)])).map(code => code.replace(/^\$gwx\('init', global\);$/m, ''));
   fs.rmSync(dir, { recursive: true, force: true });
 
   const privatePath = (page: FakePluginPage) => `plugin-private://${appid}/${page.path}`;
   const routePath = (page: FakePluginPage) => `__plugin__/${appid}/${page.path}`;
 
-  const appservice = `definePlugin("plugin://${appid}", function(define, require, module, exports, global, wx, App, Page, Component, Behavior, getApp, getCurrentPages, console, requireMiniProgram) {
+  // 基础库调用插件函数时不传 console，真实的包和这里一样先存一份再补上
+  const appservice = `var __wxAppConsole__ = console;
+definePlugin("plugin://${appid}", function(define, require, module, exports, global, wx, App, Page, Component, Behavior, getApp, getCurrentPages, console, requireMiniProgram) {
+if (typeof console === 'undefined') { console = __wxAppConsole__; }
 ${serviceGwx}
 ${pages.map(page => `global.__wxAppCode__['${privatePath(page)}.json'] = {"usingComponents":{}};
 global.__wxAppCode__['${privatePath(page)}.wxml'] = ${gwx}('./${page.path}.wxml');`).join('\n')}

@@ -39,7 +39,7 @@ describe.skipIf(!ready)('插件代码', () => {
     vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) => {
       if (!String(input).startsWith('https://servicewechat.com/')) return realFetch(input, init);
       downloads.push({ url: new URL(String(input)), body: JSON.parse(String(init?.body)) });
-      return options.wechat ? options.wechat() : new Response(pluginPackage);
+      return options.wechat ? options.wechat() : new Response(new Uint8Array(pluginPackage));
     });
     vi.stubEnv(TICKET_ENV, 'dev-ticket');
     const warnings: string[] = [];
