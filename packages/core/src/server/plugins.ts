@@ -16,7 +16,7 @@
 
 import { readWxvpkgFile, readWxvpkgIndex } from '@open-wxa/wxa-runner-extractor';
 import type { BuildResult } from '../project/AppBuilder';
-import type { WechatDevClient } from './wechatDev';
+import { requireOk, WechatDevClient } from './wechatDev';
 
 const DOWNLOAD_TIMEOUT = 30_000;
 const PACKAGE_MAGIC = 0xbe;
@@ -109,15 +109,16 @@ export class PluginStore {
   private async download(wechat: WechatDevClient, alias: string, provider: string, version: string): Promise<PluginCode> {
     const response = await wechat.post('wxa-dev/getplugincode', { plugin_id: provider, plugin_version: version }, DOWNLOAD_TIMEOUT);
     const data = Buffer.from(await response.arrayBuffer());
-    // 出错时返回的是 JSON
+    // 出错时返回的是带 baseresponse 的 JSON
     if (data[0] !== PACKAGE_MAGIC) {
-      let error: { errcode?: number; errmsg?: string } = {};
+      let body: { baseresponse?: { errcode?: number; errmsg?: string } } = {};
       try {
-        error = JSON.parse(data.toString('utf8')).baseresponse || {};
+        body = JSON.parse(data.toString('utf8'));
       } catch {
         // 不是 JSON，按没有结果码处理
       }
-      throw new Error(error.errcode ? `${error.errcode}: ${error.errmsg || '未知错误'}` : '微信没有返回插件代码');
+      if (body.baseresponse?.errcode) requireOk(body, '微信拒绝下载');
+      throw new Error('微信没有返回插件代码');
     }
 
     const files = new Map(readWxvpkgIndex(data).map(entry => [entry.name, Buffer.from(readWxvpkgFile(data, entry))]));
