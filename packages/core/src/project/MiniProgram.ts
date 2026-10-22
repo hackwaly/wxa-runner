@@ -67,7 +67,7 @@ export class MiniProgram {
   /** Worker 代码所在目录，不带首尾的 /；没有配置 workers 时为 null */
   workersDir(app: AppJson): string | null {
     const dir = typeof app.workers === 'string' ? app.workers : app.workers?.path;
-    return dir ? dir.replace(/^\/+|\/+$/g, '') : null;
+    return dir ? path.posix.normalize(dir).replace(/^\/+|\/+$/g, '') : null;
   }
 
   /** 主包页面 + 分包页面（带 root 前缀） */

@@ -38,14 +38,19 @@ export function createWeixinWorker(win: Window, host: HostApi) {
       worker.addEventListener('message', ({ data }: MessageEvent<FromWorkerMessage>) => {
         if (data.type === 'message') g.WeixinWorker.workerMsgHandler(id, data.data);
         else if (data.type === 'invoke') invoke(worker, allowed, data);
-        else host.reportError('service', 0, data);
+        else {
+          host.reportError('service', 0, data);
+          // 基础库收到后交给业务的 worker.onError，没有注册时打印到逻辑层的控制台
+          g.WeixinWorker.workerMsgHandler(id, { __cmd__: 'workerUncaughtError', __data__: { message: data.message, stack: data.stack } });
+        }
       });
       workers.set(id, worker);
       return id;
     },
-    postMsgToWorker(id: number, message: string) {
+    /** 基础库内部的消息（如 setSharedBuffer、readCompressedFile 的结果）不序列化，直接给对象 */
+    postMsgToWorker(id: number, message: unknown) {
       const worker = workers.get(id);
-      if (worker) send(worker, { type: 'message', data: JSON.parse(message) });
+      if (worker) send(worker, { type: 'message', data: typeof message === 'string' ? JSON.parse(message) : message });
     },
     terminate(id: number) {
       workers.get(id)?.terminate();

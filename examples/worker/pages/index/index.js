@@ -1,5 +1,5 @@
 Page({
-  data: { echo: '', binary: '', sum: '', status: '', file: '', readSync: '' },
+  data: { echo: '', binary: '', sum: '', status: '', file: '', readSync: '', workerError: '' },
   onLoad() {
     this.start();
   },
@@ -12,6 +12,7 @@ Page({
       if (type === 'file') this.setData({ file: reply.content || reply.errMsg });
       if (type === 'readSync') this.setData({ readSync: reply.error || reply.content });
     });
+    this.worker.onError(error => this.setData({ workerError: error.message }));
   },
   echo() {
     this.setData({ echo: '等待回复' });

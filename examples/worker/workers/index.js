@@ -22,7 +22,11 @@ worker.onMessage(message => {
         success: () => fs.readFile({
           filePath: notePath,
           encoding: 'utf8',
-          success: ({ data }) => worker.postMessage({ type: 'file', content: data }),
+          success: ({ data }) => fs.unlink({
+            filePath: notePath,
+            success: () => worker.postMessage({ type: 'file', content: `${data}（已删除）` }),
+            fail: ({ errMsg }) => worker.postMessage({ type: 'file', errMsg })
+          }),
           fail: ({ errMsg }) => worker.postMessage({ type: 'file', errMsg })
         }),
         fail: ({ errMsg }) => worker.postMessage({ type: 'file', errMsg })

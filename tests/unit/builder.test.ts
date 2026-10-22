@@ -133,7 +133,7 @@ describe.skipIf(!hasToolchain())('完整构建', () => {
     expect(result.wxConfig.entryPagePath).toBe('pages/a/a.html');
   });
 
-  it.each(['workers', 'workers/', { path: 'workers', isSubpackage: true }])
+  it.each(['workers', 'workers/', './workers', { path: 'workers', isSubpackage: true }])
   ('workers 目录下的 JS 不进逻辑层，单独作为 Worker 的模块：%j', async workers => {
     const root = createProject({
       'app.json': { pages: ['pages/a/a'], workers },

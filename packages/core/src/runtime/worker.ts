@@ -15,11 +15,11 @@ import type { FromWorkerMessage, ToWorkerMessage } from './types';
 
 const scope = self as any;
 
-/** 不以 Sync 结尾、但基础库同步取结果的接口，与开发者工具一致 */
+/** 不以 Sync 结尾、但基础库同步取结果的接口。开发者工具的列表里还有 unlink，那是异步接口，Worker 里的 fs.unlink 照常可用 */
 const SYNC_APIS = new Set([
   'getSystemInfo', 'getBackgroundAudioState', 'setBackgroundAudioState', 'operateBackgroundAudio',
   'createRequestTask', 'createUploadTask', 'createDownloadTask', 'createSocketTask', 'operateSocketTask',
-  'createAudioInstance', 'unlink'
+  'createAudioInstance'
 ]);
 
 const send = (message: FromWorkerMessage) => scope.postMessage(message);

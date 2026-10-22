@@ -478,7 +478,7 @@ WeixinJSBridge.invoke 的实现（宿主）     ← invoke / → callback       
   `create` 收到的脚本名总是 `workers.js`，业务指定的入口由基础库随后发 `requireScript` 消息让 Worker 去 `require`
 - **没有配置 `workers`** 时 `create` 返回 -1，基础库报告 Worker 不存在。基础库加载后会从全局的 `__wxConfig` 里删掉 `workers`，所以在基础库之前读
 - **console**：Worker 基础库把 console 换成转发给逻辑层的版本，转发时对象被转成文本；和开发者工具一样加载完基础库后换回原来的，日志留在 Worker 里
-- **异常**：Worker 里没有被捕获的异常经消息交给宿主，记入测试 API 的 `errors()`
+- **异常**：Worker 里没有被捕获的异常经消息交给宿主，记入测试 API 的 `errors()`；同时以 `workerUncaughtError` 交给逻辑层基础库，业务的 `worker.onError` 收到
 - **Worker 里的原生接口**：基础库只在有 `workerInvokeJsApi` 时才创建业务代码用的 `worker` 对象。异步接口转给宿主的 API 注册表，
   只放行基础库在 `create` 时给出的 `APIList`。基础库同步取结果的接口（`*Sync`，以及要同步拿到 taskId 的 `createRequestTask` 等）直接失败：
   Worker 只能和页面异步通信，开发者工具用 SharedArrayBuffer 阻塞等待，那要求整个页面跨源隔离（COOP / COEP），跨域的图片等资源都会加载不了

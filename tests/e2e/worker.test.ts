@@ -62,10 +62,10 @@ describe.skipIf(!e2eReady)('Worker', () => {
           await expectText(frame, '#echo-reply', /你好/);
         });
 
-        it('Worker 里异步写入再读出文件，读到写入的内容', async () => {
+        it('Worker 里异步写入、读出再删除文件，读到写入的内容，删除成功', async () => {
           const frame = await runner.open('/');
           await frame.click('#file');
-          await expectText(frame, '#file-reply', 'Worker 写入的内容');
+          await expectText(frame, '#file-reply', 'Worker 写入的内容（已删除）');
         });
 
         it('Worker 里调用同步接口时明确报错，说明 wxa-runner 不支持', async () => {
@@ -74,7 +74,7 @@ describe.skipIf(!e2eReady)('Worker', () => {
           await expectText(frame, '#read-sync-reply', /readFileSync.*Worker.*不支持同步接口/);
         });
 
-        it('Worker 处理消息时抛出的异常记入 errors()', async () => {
+        it('Worker 处理消息时抛出的异常交给页面的 worker.onError，并记入 errors()', async () => {
           const frame = await runner.open('/');
           expect(await errorMessages(runner)).toEqual([]);
           await frame.click('#crash');
@@ -84,6 +84,7 @@ describe.skipIf(!e2eReady)('Worker', () => {
             { timeout: 5000 }
           ).catch(() => undefined);
           expect(await errorMessages(runner)).toContainEqual(expect.stringContaining('Worker 处理消息时出错'));
+          await expectText(frame, '#worker-error', 'Worker 处理消息时出错');
         });
       });
 

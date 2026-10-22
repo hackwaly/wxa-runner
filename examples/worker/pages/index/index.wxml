@@ -21,7 +21,7 @@
 </view>
 <view class="section">
   <view class="title">Worker 里的文件接口</view>
-  <button id="file" bindtap="file">在 Worker 里写入再读出文件</button>
+  <button id="file" bindtap="file">在 Worker 里写入、读出再删除文件</button>
   <view id="file-reply">{{file}}</view>
   <button id="read-sync" bindtap="readSync">在 Worker 里同步读文件</button>
   <view id="read-sync-reply">{{readSync}}</view>
@@ -29,4 +29,5 @@
 <view class="section">
   <view class="title">Worker 里的异常</view>
   <button id="crash" bindtap="crash">让 Worker 处理消息时抛出异常</button>
+  <view id="worker-error">{{workerError}}</view>
 </view>
