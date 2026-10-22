@@ -298,6 +298,11 @@ describe('其它 API', () => {
     });
   });
 
+  it('没开真实登录时，服务市场调用明确失败并提示加 --real-login', () => {
+    const res = call(apis, 'operateWXData', { data: { api_name: 'webapi_servicemarket_jsapi_comm', data: {} } });
+    expect(res.errMsg).toMatch(/^operateWXData:fail .*--real-login/);
+  });
+
   it('开放接口返回可预测的模拟数据，支付明确失败', () => {
     expect(call(apis, 'login').code).toMatch(/^wxa_mock_code_/);
     expect(phoneCodeSeenByBaseLib(call(apis, 'getPhoneNumber'))).toMatch(/^mock_phone_code_/);
@@ -382,13 +387,13 @@ describe('真实登录（--real-login）', () => {
     vi.unstubAllGlobals();
   });
 
-  function invoke(api: string, response: Response) {
+  function invoke(api: string, response: Response, args: Record<string, any> = {}) {
     const fetchMock = vi.fn(async (..._args: unknown[]) => response);
     vi.stubGlobal('fetch', fetchMock);
     const onRealLoginFail = vi.fn();
     const registry = new ApiRegistry();
     registry.register(createMiscApis('wx1', { realLogin: true, onRealLoginFail }));
-    return { result: registry.invoke(api, {}, { api, from: 'service', webviewId: 1 }) as Promise<ApiResult>, fetchMock, onRealLoginFail };
+    return { result: registry.invoke(api, args, { api, from: 'service', webviewId: 1 }) as Promise<ApiResult>, fetchMock, onRealLoginFail };
   }
 
   const json = (body: object, status = 200) => new Response(JSON.stringify(body), { status });
@@ -420,6 +425,32 @@ describe('真实登录（--real-login）', () => {
     const succeeded = invoke('login', json({ code: 'real-code' }));
     await succeeded.result;
     expect(succeeded.onRealLoginFail).not.toHaveBeenCalled();
+  });
+
+  it('wx.serviceMarket 的请求经开发服务器发给微信，结果原样交给基础库', async () => {
+    const request = { api_name: 'webapi_servicemarket_jsapi_comm', data: { service_id: 'wxcae50ba710ca29d3', api_name: 'jokebot', data: '{"mode":2}' } };
+    const data = { data: JSON.stringify({ request_id: 'req-1', errcode: 0, data: '{"err_code":0}' }), err_no: 0 };
+    const { result, fetchMock } = invoke('operateWXData', json({ data }), { data: request });
+
+    expect(await result).toEqual({ data, errMsg: 'operateWXData:ok' });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/__wxa__/api/operate-wx-data');
+    expect(JSON.parse(init.body as string)).toEqual({ data: request });
+  });
+
+  it('服务市场调用失败时，业务代码收到 fail，宿主页面提示是哪个接口', async () => {
+    const request = { api_name: 'webapi_servicemarket_jsapi_comm', data: {} };
+    const { result, onRealLoginFail } = invoke('operateWXData', json({ error: '服务市场调用失败 40001: invalid credential' }, 500), { data: request });
+
+    // 带上 err_code，基础库才会把原因拼进 invokeService 的错误
+    expect(await result).toEqual({ errMsg: 'operateWXData:fail 服务市场调用失败 40001: invalid credential', err_code: -1 });
+    expect(onRealLoginFail).toHaveBeenCalledWith('serviceMarket.invokeService', '服务市场调用失败 40001: invalid credential');
+  });
+
+  it('开启真实登录后，基础库拉取配置的 operateWXData 不发给开发服务器', () => {
+    const { result, fetchMock } = invoke('operateWXData', json({}), { data: { api_name: 'webapi_getwxabusinessconfig' } });
+    expect(result).toEqual({ errMsg: 'operateWXData:ok' });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('响应不是 JSON 时（如代理返回的错误页）fail 消息带上状态码', async () => {

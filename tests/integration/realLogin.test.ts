@@ -14,6 +14,18 @@ import { realLoginRouter } from '../../packages/core/src/server/realLogin';
 import { collectSetupEnv } from '../../packages/core/src/server/setup';
 
 const LATER = Date.now() + 3600_000;
+/** wx.serviceMarket.invokeService 经基础库交给原生 operateWXData 的 data，取自实测 */
+const SERVICE_MARKET_REQUEST = {
+  api_name: 'webapi_servicemarket_jsapi_comm',
+  data: { service_id: 'wxcae50ba710ca29d3', api_name: 'jokebot', data: '{"mode":2}', client_msg_id: '0.5_1', version: 1 },
+  operate_directly: false,
+  env: 1
+};
+/** jsoperatewxdata 成功时 data 是 JSON 文本，里面的 data 才是服务市场的结果，取自实测 */
+const SERVICE_MARKET_DATA = JSON.stringify({
+  data: JSON.stringify({ request_id: 'req-1', errcode: 0, errmsg: 'ok', scene: 4, data: '{"err_code":0,"data_list":[]}' }),
+  err_no: 0
+});
 const PHONE_DATA = JSON.stringify({ data: '{"mobile":"138****1997"}', encryptedData: 'nW3E', iv: 'A44H', code: 'bb2730' });
 
 let server: http.Server;
@@ -37,15 +49,16 @@ afterEach(() => {
   ticket = null;
 });
 
-function post(path: string, headers: Record<string, string> = {}): Promise<{ status: number; body: any }> {
+function post(path: string, headers: Record<string, string> = {}, json?: object): Promise<{ status: number; body: any }> {
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: '127.0.0.1', port, path: `/__wxa__/api${path}`, method: 'POST', headers }, res => {
+    const allHeaders = json ? { 'content-type': 'application/json', ...headers } : headers;
+    const req = http.request({ host: '127.0.0.1', port, path: `/__wxa__/api${path}`, method: 'POST', headers: allHeaders }, res => {
       let text = '';
       res.on('data', chunk => (text += chunk));
       res.on('end', () => resolve({ status: res.statusCode!, body: JSON.parse(text) }));
     });
     req.on('error', reject);
-    req.end();
+    req.end(json ? JSON.stringify(json) : undefined);
   });
 }
 
@@ -131,6 +144,42 @@ describe('真实登录接口', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect((await post('/login', { host: `[::1]:${port}` })).status).toBe(200);
     expect((await post('/login', { host: `localhost:${port}` })).status).toBe(200);
+  });
+
+  it('服务市场：用开发者 ticket 请求 jsoperatewxdata，微信返回的 data 解析后交给基础库', async () => {
+    ticket = { newticket: 't', expiredAt: LATER };
+    const fetchMock = stubWechat({ baseresponse: { errcode: 0, errmsg: 'ok' }, data: SERVICE_MARKET_DATA });
+
+    expect(await post('/operate-wx-data', {}, { data: SERVICE_MARKET_REQUEST })).toEqual({
+      status: 200,
+      body: { data: JSON.parse(SERVICE_MARKET_DATA) }
+    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const { pathname, searchParams } = new URL(url);
+    expect(pathname).toBe('/wxa-dev-logic/jsoperatewxdata');
+    expect(searchParams.get('appid')).toBe('wx-app');
+    // 与开发者工具一致：基础库给的 data 序列化成文本放在 data 字段里
+    expect(JSON.parse(JSON.parse(init.body as string).data)).toEqual(SERVICE_MARKET_REQUEST);
+  });
+
+  it('服务市场：微信拒绝时说明原因和处理办法', async () => {
+    ticket = { newticket: 't', expiredAt: LATER };
+    stubWechat({ baseresponse: { errcode: 40001, errmsg: 'invalid credential' } });
+
+    const { status, body } = await post('/operate-wx-data', {}, { data: SERVICE_MARKET_REQUEST });
+    expect(status).toBe(500);
+    expect(body.error).toBe('服务市场调用失败 40001: invalid credential（登录态已失效，请在微信开发者工具里重新登录）');
+  });
+
+  it('只转发服务市场的请求：别的 operateWXData 不会借开发者的登录态发给微信', async () => {
+    ticket = { newticket: 't', expiredAt: LATER };
+    const fetchMock = stubWechat({ baseresponse: { errcode: 0 }, data: '{}' });
+
+    const { status, body } = await post('/operate-wx-data', {}, { data: { api_name: 'webapi_getuserinfo', data: {} } });
+    expect(status).toBe(403);
+    expect(body.error).toContain('webapi_getuserinfo');
+    expect((await post('/operate-wx-data', {}, {})).status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('开发者 ticket 的环境变量不会随 setup 下发给浏览器', () => {
