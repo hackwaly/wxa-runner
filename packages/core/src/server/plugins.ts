@@ -48,6 +48,12 @@ type DeclaredPlugins = Record<string, { provider?: string; version?: string }>;
 export class PluginStore {
   /** provider@version → 下载结果；失败的不留，下次打开小程序时重试 */
   private readonly downloads = new Map<string, Promise<PluginCode>>();
+  /**
+   * 这次打开小程序时决定用哪些插件。同一次打开的逻辑层、业务模块、渲染层等请求都按它处理：
+   * 各自去下载的话，下载失败时每个请求都会重试，结果还可能前后不一，页面列表和逻辑层对不上
+   */
+  private selection: Promise<PluginCode[]> | null = null;
+  /** 没开 --real-login 的提示每个插件只说一次 */
   private readonly warned = new Set<string>();
 
   /**
@@ -59,24 +65,25 @@ export class PluginStore {
     private readonly logger: Pick<Console, 'warn'>
   ) {}
 
-  /** 并入 app.json 声明的插件；下载不了的跳过，在终端说明原因，小程序自己的页面照常可用 */
-  async apply(build: BuildResult): Promise<AppBuild> {
+  /** 打开小程序时（宿主取 app-info）调用：重新决定用哪些插件，下载过的直接用，上次失败的重试 */
+  async refresh(build: BuildResult): Promise<AppBuild> {
+    this.selection = this.select(build);
+    return withPlugins(build, await this.selection);
+  }
+
+  /** 其余请求沿用这次打开时的决定，不触发下载；还没决定过时（如直接请求逻辑层）先决定一次 */
+  async current(build: BuildResult): Promise<AppBuild> {
+    this.selection ??= this.select(build);
+    return withPlugins(build, await this.selection);
+  }
+
+  /** app.json 声明的插件；下载不了的跳过，在终端说明原因，小程序自己的页面照常可用 */
+  private async select(build: BuildResult): Promise<PluginCode[]> {
     const declared: DeclaredPlugins = build.wxConfig.plugins || {};
     const results = await Promise.all(Object.entries(declared).map(([alias, { provider, version }]) =>
       provider && version ? this.load(alias, provider, version) : null
     ));
-    const plugins = results.filter((plugin): plugin is PluginCode => !!plugin);
-    if (!plugins.length) return { ...build, plugins };
-
-    return {
-      ...build,
-      plugins,
-      pages: [...build.pages, ...plugins.flatMap(plugin => plugin.pages)],
-      wxConfig: {
-        ...build.wxConfig,
-        page: { ...build.wxConfig.page, ...Object.assign({}, ...plugins.map(plugin => plugin.pageConfigs)) }
-      }
-    };
+    return results.filter((plugin): plugin is PluginCode => !!plugin);
   }
 
   private async load(alias: string, provider: string, version: string): Promise<PluginCode | null> {
@@ -141,6 +148,20 @@ export class PluginStore {
     this.warned.add(key);
     this.logger.warn(message);
   }
+}
+
+/** 插件页面并入 pages，配置并入 __wxConfig.page */
+function withPlugins(build: BuildResult, plugins: PluginCode[]): AppBuild {
+  if (!plugins.length) return { ...build, plugins };
+  return {
+    ...build,
+    plugins,
+    pages: [...build.pages, ...plugins.flatMap(plugin => plugin.pages)],
+    wxConfig: {
+      ...build.wxConfig,
+      page: { ...build.wxConfig.page, ...Object.assign({}, ...plugins.map(plugin => plugin.pageConfigs)) }
+    }
+  };
 }
 
 /** 插件页面所属的插件，以及页面在插件包里的路径（不带扩展名） */

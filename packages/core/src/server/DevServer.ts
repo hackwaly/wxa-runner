@@ -180,7 +180,8 @@ export class DevServer {
       noStore(res);
       const base = { appid: this.project.appid, baseLibVersion: this.baseLib.version, device: this.device, realLogin: this.options.realLogin === true };
       try {
-        const build = await this.currentBuild();
+        // 宿主打开小程序时先取 app-info：这时重新决定用哪些插件，之后的请求都按这个结果
+        const build = await this.plugins.refresh(await this.builder.build());
         const info: AppInfo = { ...base, version: build.version, wxConfig: build.wxConfig, pages: build.pages };
         if (this.setupFile) info.setup = await this.setupInfo(this.setupFile);
         res.json(info);
@@ -367,9 +368,9 @@ export class DevServer {
     }
   }
 
-  /** 构建结果并入用到的插件 */
+  /** 构建结果并入这次打开小程序时决定用的插件 */
   private async currentBuild(): Promise<AppBuild> {
-    return this.plugins.apply(await this.builder.build());
+    return this.plugins.current(await this.builder.build());
   }
 
   /** 需要构建结果的路由；构建失败时返回错误文本 */
