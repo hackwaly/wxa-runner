@@ -35,7 +35,8 @@ import { handleProxy } from './proxy';
 import { planHotUpdate } from './hmr';
 import { developerTicketSource, TicketSource } from './developerTicket';
 import { AppBuild, findPluginPage, PluginStore } from './plugins';
-import { realLoginRouter, requireUsableTicket } from './realLogin';
+import { realLoginRouter } from './realLogin';
+import { requireUsableTicket, WechatDevClient } from './wechatDev';
 import { bundleSetup, collectSetupEnv, findSetupFile } from './setup';
 import { ProjectWatcher, watchProject } from './watcher';
 
@@ -100,7 +101,7 @@ export class DevServer {
       this.logger.warn(`[wxa-runner] 基础库 ${this.baseLib.version} 高于已验证的版本范围，可能无法正常运行`);
     }
     this.ticketSource = options.realLogin ? developerTicketSource(this.project.projectPath, this.logger) : null;
-    this.plugins = new PluginStore(this.project.appid, this.ticketSource, this.logger);
+    this.plugins = new PluginStore(this.ticketSource && new WechatDevClient(this.project.appid, this.ticketSource), this.logger);
     this.device = { ...DEFAULT_DEVICE, ...options.device };
     this.builder = new AppBuilder(this.project);
     this.setupFile = resolveSetupFile(options.setup, this.project.projectPath);

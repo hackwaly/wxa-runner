@@ -97,6 +97,7 @@ wxa-runner/
 │   │       │   ├── proxy.ts           # wx.request 等的转发代理
 │   │       │   ├── setup.ts           # 查找、打包 setup 文件，收集 WXA_ 环境变量
 │   │       │   ├── realLogin.ts       # --real-login 的真实登录接口
+│   │       │   ├── wechatDev.ts       # 借开发者登录态访问微信后台：ticket、超时、错误提示统一处理
 │   │       │   ├── plugins.ts         # 插件：借开发者登录态下载插件代码，插件页面并入小程序
 │   │       │   └── developerTicket.ts # 真实登录的 ticket：新版开发者工具经自动化接口实时获取
 │   │       └── runtime/               # 浏览器端（打包为 dist/runtime/host.js、frame.js、worker.js）

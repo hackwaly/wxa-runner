@@ -16,10 +16,8 @@
 
 import { readWxvpkgFile, readWxvpkgIndex } from '@open-wxa/wxa-runner-extractor';
 import type { BuildResult } from '../project/AppBuilder';
-import type { TicketSource } from './developerTicket';
-import { CLIENT_VERSION, requireUsableTicket } from './realLogin';
+import type { WechatDevClient } from './wechatDev';
 
-const GET_PLUGIN_CODE = 'https://servicewechat.com/wxa-dev/getplugincode';
 const DOWNLOAD_TIMEOUT = 30_000;
 const PACKAGE_MAGIC = 0xbe;
 
@@ -57,11 +55,10 @@ export class PluginStore {
   private readonly warned = new Set<string>();
 
   /**
-   * @param ticketSource 开启 --real-login 时才有，没有时不下载插件
+   * @param wechat 开启 --real-login 时才有，没有时不下载插件
    */
   constructor(
-    private readonly appid: string,
-    private readonly ticketSource: TicketSource | null,
+    private readonly wechat: WechatDevClient | null,
     private readonly logger: Pick<Console, 'warn'>
   ) {}
 
@@ -88,7 +85,7 @@ export class PluginStore {
 
   private async load(alias: string, provider: string, version: string): Promise<PluginCode | null> {
     const label = `插件 ${alias}（${provider}@${version}）`;
-    if (!this.ticketSource) {
+    if (!this.wechat) {
       this.warnOnce(label, `[wxa-runner] ${label} 的代码要用开发者的登录态向微信下载，启动时加 --real-login`);
       return null;
     }
@@ -96,7 +93,7 @@ export class PluginStore {
     const key = `${provider}@${version}`;
     let download = this.downloads.get(key);
     if (!download) {
-      download = this.download(alias, provider, version);
+      download = this.download(this.wechat, alias, provider, version);
       this.downloads.set(key, download);
       download.catch(() => this.downloads.delete(key));
     }
@@ -108,17 +105,9 @@ export class PluginStore {
     }
   }
 
-  /** @throws 没有登录态、微信拒绝或返回的不是插件代码包时，消息是原因 */
-  private async download(alias: string, provider: string, version: string): Promise<PluginCode> {
-    const ticket = requireUsableTicket(await this.ticketSource!());
-    const query = new URLSearchParams({ appid: this.appid, newticket: ticket, clientversion: CLIENT_VERSION });
-    const response = await fetch(`${GET_PLUGIN_CODE}?${query}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plugin_id: provider, plugin_version: version }),
-      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT)
-    });
-    if (!response.ok) throw new Error(`微信服务器返回 HTTP ${response.status}`);
+  /** @throws 没有登录态、连不上、微信拒绝或返回的不是插件代码包时，消息是原因 */
+  private async download(wechat: WechatDevClient, alias: string, provider: string, version: string): Promise<PluginCode> {
+    const response = await wechat.post('wxa-dev/getplugincode', { plugin_id: provider, plugin_version: version }, DOWNLOAD_TIMEOUT);
     const data = Buffer.from(await response.arrayBuffer());
     // 出错时返回的是 JSON
     if (data[0] !== PACKAGE_MAGIC) {

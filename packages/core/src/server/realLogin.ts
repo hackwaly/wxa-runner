@@ -12,12 +12,9 @@
  */
 
 import express, { NextFunction, Request, Response, Router } from 'express';
-import { DeveloperTicket, findDeveloperTicket, TICKET_ENV } from '@open-wxa/wxa-runner-extractor';
+import { findDeveloperTicket } from '@open-wxa/wxa-runner-extractor';
+import { explainErrcode, FindTicket, requireOk, WechatDevClient } from './wechatDev';
 
-const DEV_LOGIC = 'https://servicewechat.com/wxa-dev-logic';
-/** 开发者工具请求这些接口时带的版本号 */
-export const CLIENT_VERSION = '1021810240';
-const UPSTREAM_TIMEOUT = 10_000;
 const LOOPBACK_ADDRESSES = ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
 const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 
@@ -27,69 +24,27 @@ const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
  */
 const FORWARDED_WX_DATA_APIS = ['webapi_servicemarket_jsapi_comm'];
 
-const ERROR_HINTS: Record<number, string> = {
-  // 40001：开发者工具刷新过 ticket，旧的随即作废
-  40001: '（登录态已失效，请在微信开发者工具里重新登录）',
-  40029: '（登录态已失效，请在微信开发者工具里重新登录）',
-  85023: '（当前微信账号不是该小程序的开发者）'
-};
-
-/**
- * 取出可用的 ticket
- *
- * @throws 没有登录态或已过期时，消息是给用户看的处理办法
- */
-export function requireUsableTicket(ticket: DeveloperTicket | null): string {
-  if (!ticket) throw new Error(`未找到微信开发者工具的登录态，请登录开发者工具，或设置环境变量 ${TICKET_ENV}`);
-  if (ticket.expiredAt !== undefined && ticket.expiredAt <= Date.now()) {
-    throw new Error('微信开发者工具的登录态已过期，请打开开发者工具刷新登录态');
-  }
-  return ticket.newticket;
-}
-
 /**
  * @param findTicket 每次请求都重新查找：开发者工具重新登录、切换账号后不用重启服务器
  */
-export function realLoginRouter(
-  appid: string,
-  findTicket: () => DeveloperTicket | null | Promise<DeveloperTicket | null> = findDeveloperTicket
-): Router {
-  const callDevLogic = async (endpoint: string, body: object) => {
-    const query = new URLSearchParams({ appid, newticket: requireUsableTicket(await findTicket()), clientversion: CLIENT_VERSION });
-    const response = await fetch(`${DEV_LOGIC}/${endpoint}?${query}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT)
-    }).catch((error: Error & { cause?: Error }) => {
-      // Node 的 fetch 只报 fetch failed，具体原因（DNS、连接被拒等）在 cause 里
-      throw new Error(error.name === 'TimeoutError'
-        ? `请求微信服务器超时（${UPSTREAM_TIMEOUT / 1000}s）`
-        : `请求微信服务器失败：${error.cause?.message ?? error.message}`);
-    });
-    if (!response.ok) throw new Error(`微信服务器返回 HTTP ${response.status}`);
-    return response.json();
-  };
-
+export function realLoginRouter(appid: string, findTicket: FindTicket = findDeveloperTicket): Router {
+  const wechat = new WechatDevClient(appid, findTicket);
   const router = express.Router();
   router.use(onlyLoopback);
 
   router.post('/login', respond(async () => {
-    const body = await callDevLogic('jslogin', { scope: ['snsapi_base'] });
-    const errcode = body.baseresponse?.errcode;
-    if (errcode !== 0 || !body.code) {
-      throw new Error(`微信登录失败 ${errcode}: ${body.baseresponse?.errmsg || '未知错误'}${ERROR_HINTS[errcode] ?? ''}`);
-    }
+    const body = requireOk(await wechat.postJson('wxa-dev-logic/jslogin', { scope: ['snsapi_base'] }), '微信登录失败');
+    if (!body.code) throw new Error('微信登录失败：微信没有返回 code');
     return { code: body.code };
   }));
 
   router.post('/phone-number', respond(async () => {
-    const body = await callDevLogic('jsgetuserwxphone', { appid });
+    const body = await wechat.postJson('wxa-dev-logic/jsgetuserwxphone', { appid });
     // 结果码在 jsapi_baseresponse 里，不是 jslogin 那样的 baseresponse
     const errcode = body.jsapi_baseresponse?.errcode ?? body.BaseResponse?.Ret;
     if (errcode !== 0 || typeof body.data !== 'string') {
       const errmsg = body.jsapi_baseresponse?.errmsg || body.BaseResponse?.ErrMsg?.String || '未知错误';
-      throw new Error(`获取手机号失败 ${errcode}: ${errmsg}${ERROR_HINTS[errcode] ?? ''}`);
+      throw new Error(`获取手机号失败 ${errcode}: ${errmsg}${explainErrcode(errcode)}`);
     }
     // data 原样转交：基础库从 JSON.parse(data) 里取 code 和 request_id
     const { encryptedData, iv } = JSON.parse(body.data);
@@ -102,11 +57,8 @@ export function realLoginRouter(
     res.status(403).json({ error: `operateWXData 只转发服务市场的请求，不转发 ${apiName}` });
   }, respond(async req => {
     // 与开发者工具一致：基础库给的 data 序列化成文本放在 data 字段里
-    const body = await callDevLogic('jsoperatewxdata', { data: JSON.stringify(req.body.data) });
-    const errcode = body.baseresponse?.errcode;
-    if (errcode !== 0 || typeof body.data !== 'string') {
-      throw new Error(`服务市场调用失败 ${errcode}: ${body.baseresponse?.errmsg || '未知错误'}${ERROR_HINTS[errcode] ?? ''}`);
-    }
+    const body = requireOk(await wechat.postJson('wxa-dev-logic/jsoperatewxdata', { data: JSON.stringify(req.body.data) }), '服务市场调用失败');
+    if (typeof body.data !== 'string') throw new Error('服务市场调用失败：微信没有返回结果');
     // 服务市场自己的结果码在 data 里，由基础库解析成 invokeService 的结果
     return { data: JSON.parse(body.data) };
   }));
@@ -114,24 +66,17 @@ export function realLoginRouter(
   // 插件：基础库启动时校验插件、取插件信息，插件里的网络请求要等拿到这两样才发出
   router.post('/verify-plugin', express.json(), respond(async req => {
     // 与开发者工具一致：基础库给的 data 序列化后放在 ext_info 里
-    const body = requireOk(await callDevLogic('verifyplugin', { ext_info: JSON.stringify(req.body?.data || {}) }), '插件校验失败');
+    const body = requireOk(await wechat.postJson('wxa-dev-logic/verifyplugin', { ext_info: JSON.stringify(req.body?.data || {}) }), '插件校验失败');
     return { data: { list: body.list || [] } };
   }));
 
   router.post('/batch-get-contact', express.json(), respond(async req => {
-    const body = requireOk(await callDevLogic('batchgetcontact', { appid_list: req.body?.appIds || [] }), '获取插件信息失败');
+    const body = requireOk(await wechat.postJson('wxa-dev-logic/batchgetcontact', { appid_list: req.body?.appIds || [] }), '获取插件信息失败');
     const contacts: Array<{ appid: string; plugin_info?: { plugin_list?: unknown[] } }> = body.contact_list || [];
     return { contactList: contacts.filter(contact => contact.plugin_info).map(contact => ({ appId: contact.appid, plugin_list: contact.plugin_info!.plugin_list })) };
   }));
 
   return router;
-}
-
-/** @throws 微信返回的结果码不为 0 时，消息是 action 加上结果码和处理办法 */
-function requireOk(body: any, action: string): any {
-  const errcode = body.baseresponse?.errcode;
-  if (errcode !== 0) throw new Error(`${action} ${errcode}: ${body.baseresponse?.errmsg || '未知错误'}${ERROR_HINTS[errcode] ?? ''}`);
-  return body;
 }
 
 function onlyLoopback(req: Request, res: Response, next: NextFunction) {
