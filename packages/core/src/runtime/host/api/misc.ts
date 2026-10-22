@@ -2,27 +2,28 @@
  * 其余 API：开放接口 Mock、剪贴板等
  *
  * 开放接口（登录、用户信息、支付）在浏览器里无法真实调用，返回可预测的假数据，
- * 测试中可以用 __wxa_test_api__.mock() 覆盖。开启 --real-login 时，登录、手机号和服务市场（wx.serviceMarket）经开发服务器向微信换取真实结果。
+ * 测试中可以用 __wxa_test_api__.mock() 覆盖。开启 --devtools-login 时，登录、手机号、服务市场（wx.serviceMarket）和插件经开发服务器借开发者工具的登录态向微信取真实结果。
  */
 
 import { ApiHandler, ApiResult, fail, ok } from './registry';
 import { saveTempFile } from './tempFiles';
 
 export interface MiscApiOptions {
-  realLogin?: boolean;
-  /** 真实登录失败时触发，用来在页面上提示开发者；业务代码照常收到 fail */
-  onRealLoginFail?: (api: string, reason: string) => void;
+  devtoolsLogin?: boolean;
+  /** 经开发服务器向微信取结果失败时触发，用来在页面上提示开发者；业务代码照常收到 fail */
+  onDevtoolsLoginFail?: (api: string, reason: string) => void;
 }
 
 /** wx.serviceMarket.invokeService 经原生 operateWXData 发出时的 api_name */
 const SERVICE_MARKET = 'webapi_servicemarket_jsapi_comm';
 
 export function createMiscApis(appid: string, options?: MiscApiOptions): Record<string, ApiHandler> {
-  const realLogin = async (api: string, url: string, json?: object) => {
+  /** 经开发服务器借开发者工具的登录态向微信取结果 */
+  const viaDevtools = async (api: string, url: string, json?: object) => {
     try {
       return await postDevServer(url, json);
     } catch (error) {
-      options?.onRealLoginFail?.(api, (error as Error).message);
+      options?.onDevtoolsLoginFail?.(api, (error as Error).message);
       throw error;
     }
   };
@@ -39,9 +40,9 @@ export function createMiscApis(appid: string, options?: MiscApiOptions): Record<
       if (args.data?.api_name === SERVICE_MARKET) {
         // 基础库只在失败结果带 err_code 时把 errMsg 拼进 invokeService 的错误，否则业务代码只看到 [object Object]
         const serviceMarketFail = (reason: string) => fail(api, reason, { err_code: -1 });
-        if (!options?.realLogin) return serviceMarketFail('wx.serviceMarket 要向微信服务市场真实调用，启动时加 --real-login');
+        if (!options?.devtoolsLogin) return serviceMarketFail('wx.serviceMarket 要向微信服务市场真实调用，启动时加 --devtools-login');
         // 结果原样交回：服务市场的结果码和数据由基础库从 data 里解析
-        return realLogin('serviceMarket.invokeService', '/__wxa__/api/operate-wx-data', { data: args.data }).then(
+        return viaDevtools('serviceMarket.invokeService', '/__wxa__/api/operate-wx-data', { data: args.data }).then(
           ({ data }) => ok(api, { data }),
           (error: Error) => serviceMarketFail(error.message)
         );
@@ -53,19 +54,19 @@ export function createMiscApis(appid: string, options?: MiscApiOptions): Record<
     getAppContact: (args, { api }) =>
       args.keyPath === 'WxaAppInfo.Network.BizDomain' ? bizDomainUnavailable(api) : ok(api),
 
-    // 插件：基础库启动时校验插件、取插件信息，插件里的网络请求要等拿到这两样才发出。插件代码也只在 --real-login 时下载
-    ...(options?.realLogin ? {
-      verifyPlugin: (async (args, { api }) => ok(api, await realLogin(api, '/__wxa__/api/verify-plugin', { data: args.data }))) as ApiHandler,
-      batchGetContact: (async (args, { api }) => ok(api, await realLogin(api, '/__wxa__/api/batch-get-contact', { appIds: args.appIds }))) as ApiHandler
+    // 插件：基础库启动时校验插件、取插件信息，插件里的网络请求要等拿到这两样才发出。插件代码也只在 --devtools-login 时下载
+    ...(options?.devtoolsLogin ? {
+      verifyPlugin: (async (args, { api }) => ok(api, await viaDevtools(api, '/__wxa__/api/verify-plugin', { data: args.data }))) as ApiHandler,
+      batchGetContact: (async (args, { api }) => ok(api, await viaDevtools(api, '/__wxa__/api/batch-get-contact', { appIds: args.appIds }))) as ApiHandler
     } : {}),
 
-    // 真实登录失败时明确返回 fail，不退回假数据：配置或登录态的问题要让开发者马上发现
-    login: options?.realLogin
-      ? async (_args, { api }) => ok(api, { code: (await realLogin(api, '/__wxa__/api/login')).code })
+    // 向微信取不到时明确返回 fail，不退回假数据：配置或登录态的问题要让开发者马上发现
+    login: options?.devtoolsLogin
+      ? async (_args, { api }) => ok(api, { code: (await viaDevtools(api, '/__wxa__/api/login')).code })
       : (_args, { api }) => ok(api, { code: `wxa_mock_code_${Date.now().toString(36)}` }),
     // 基础库只从 JSON.parse(data) 里取手机号的 code
-    getPhoneNumber: options?.realLogin
-      ? async (_args, { api }) => ok(api, await realLogin(api, '/__wxa__/api/phone-number'))
+    getPhoneNumber: options?.devtoolsLogin
+      ? async (_args, { api }) => ok(api, await viaDevtools(api, '/__wxa__/api/phone-number'))
       : (_args, { api }) => ok(api, { data: JSON.stringify({ code: `mock_phone_code_${Date.now()}` }), encryptedData: 'mock_encrypted', iv: 'mock_iv' }),
     checkSession: () => undefined,
     authorize: () => undefined,

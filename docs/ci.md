@@ -78,7 +78,7 @@ GitLab CI、Jenkins 等也可以，机器要满足：
 - 只支持 x86-64
 - 基础库只有内置的 3.7.0
 - 编译器版本较旧，模板运行时有少量差异（如单页最多 16000 个节点），地区选择器不可用
-- 不能用 `--real-login`：开发者 ticket 很快过期。登录用 setup 的 [`mock`](./setup.md#mock) 和 [`network.routes`](./setup.md#network) 跳过
+- 不能用 `--devtools-login`：开发者 ticket 很快过期。登录用 setup 的 [`mock`](./setup.md#mock) 和 [`network.routes`](./setup.md#network) 跳过
 
 完整的列表见[功能与限制](./features.md#已知限制)。
 

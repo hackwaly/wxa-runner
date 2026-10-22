@@ -20,7 +20,7 @@ npx wxa-runner dev ./dist/dev/mp-weixin   # 原生小程序目录，或 uni-app 
 
 - [快速开始](https://open-wxa.github.io/wxa-runner/getting-started)：安装、基础库和编译器
 - [启动前准备（setup）](https://open-wxa.github.io/wxa-runner/setup)：跳过登录、mock 原生 API、拦截 `wx.request`
-- [真实登录](https://open-wxa.github.io/wxa-runner/real-login)：借开发者工具的登录态拿真实的 code 和手机号
+- [借用开发者工具登录态](https://open-wxa.github.io/wxa-runner/devtools-login)：拿真实的 code 和手机号，调用服务市场，使用插件页面
 - [热更新](https://open-wxa.github.io/wxa-runner/hot-reload)
 - [在 Playwright 中测试](https://open-wxa.github.io/wxa-runner/testing)
 - [在 CI 中运行](https://open-wxa.github.io/wxa-runner/ci)：Linux 上无头运行，不装开发者工具

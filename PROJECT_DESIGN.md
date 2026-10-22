@@ -96,10 +96,10 @@ wxa-runner/
 │   │       │   ├── ignoreList.ts      # 基础库脚本加入 DevTools 忽略列表的 source map
 │   │       │   ├── proxy.ts           # wx.request 等的转发代理
 │   │       │   ├── setup.ts           # 查找、打包 setup 文件，收集 WXA_ 环境变量
-│   │       │   ├── realLogin.ts       # --real-login 的真实登录接口
+│   │       │   ├── devtoolsLogin.ts   # --devtools-login 的接口：登录、手机号，服务市场和插件的请求转发
 │   │       │   ├── wechatDev.ts       # 借开发者登录态访问微信后台：ticket、超时、错误提示统一处理
 │   │       │   ├── plugins.ts         # 插件：借开发者登录态下载插件代码，插件页面并入小程序
-│   │       │   └── developerTicket.ts # 真实登录的 ticket：新版开发者工具经自动化接口实时获取
+│   │       │   └── developerTicket.ts # --devtools-login 的 ticket：新版开发者工具经自动化接口实时获取
 │   │       └── runtime/               # 浏览器端（打包为 dist/runtime/host.js、frame.js、worker.js）
 │   │           ├── frame.ts           # 注入 iframe：全局变量、WeixinJSBridge、设备尺寸、触摸模拟
 │   │           ├── context.ts         # 3.7.1 起的基础库：模拟原生 WeixinJSContext，在逻辑层里创建子上下文
@@ -257,7 +257,7 @@ document.dispatchEvent(new CustomEvent("generateFuncReady", {
 ### 插件（server/plugins.ts）
 
 插件代码不在项目里。同开发者工具：开发服务器带着开发者 ticket 向微信下载 `app.json` 声明的插件（`wxa-dev/getplugincode`，
-body 是插件 appid 和版本），只放在内存里，同一个插件版本下载一次。要用开发者的登录态，所以只在 `--real-login` 时下载；
+body 是插件 appid 和版本），只放在内存里，同一个插件版本下载一次。要用开发者的登录态，所以只在 `--devtools-login` 时下载；
 下载不了时在终端说明原因，小程序自己的页面照常可用。
 
 下载到的是 `.wxvpkg` 格式（同基础库）的编译产物，wxa-runner 不用再编译：
@@ -369,7 +369,7 @@ navigateTo(url)
 | tempFiles / savedFiles | 临时文件存到开发服务器；保存的文件：saveFile、getSavedFileList / getSavedFileInfo、removeSavedFile，见下文「原生组件」 |
 | libFiles | 渲染层按需加载基础库文件（`loadLibFilesSync`），3.3.x、3.5.x 的 video 等组件用，见下文「原生组件」 |
 | subpackages | 分包加载任务：`createLoadSubPackageTask` 同步返回 taskId，随后通过 `onLoadSubPackageTaskStateChange` 推送 `progressUpdate`、`success`，未声明的分包失败。所有分包的代码构建时已经注册，不用下载；渲染层的 `injectSubPackages` 直接成功，模板和样式已在 page-frame.js 里。分包预下载和分包异步化（跨分包组件、`require.async`）都走这里 |
-| misc | 登录、用户信息等开放接口的固定返回（`--real-login` 时登录和手机号换成真实的）、剪贴板等 |
+| misc | 登录、用户信息等开放接口的固定返回（`--devtools-login` 时登录和手机号换成真实的，服务市场、插件校验经开发服务器转发）、剪贴板等 |
 | 路由 | 由 Host 实现 |
 
 未实现的 API 默认返回 `:ok` 并在控制台提示一次；基础库内部的上报类调用静默处理。
@@ -596,7 +596,7 @@ WeixinJSBridge.invoke 的实现（宿主）     ← invoke / → callback       
 | `/__wxa__/proxy?url=` | 网络代理 |
 | `/__wxa__/tmp` | 临时文件：`POST ?type=png` 保存，返回可直接访问的地址；对该地址 `HEAD` 查大小、`DELETE` 删除；随服务器进程存在 |
 | `/__wxa__/region/<districts\|streets>` | 地区选择器用的行政区划数据，取自本机开发者工具 |
-| `/__wxa__/api/*` | 真实登录（`--real-login`）：`wx.login` 的 code、手机号，只允许本机访问 |
+| `/__wxa__/api/*` | `--devtools-login`：`wx.login` 的 code、手机号，服务市场、插件校验和插件信息的转发，只允许本机访问 |
 | `/__wxa__/ws` | 文件变化通知：热更新（`hot`）、整页刷新（`reload`）、编译错误（`error`） |
 | 其他 | 小程序目录下的静态资源 |
 

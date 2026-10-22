@@ -124,7 +124,7 @@ export default defineConfig({
       {
         text: '指南',
         link: '/getting-started',
-        activeMatch: '^/(getting-started|features|vs-miniprogram-automator|uni-app|setup|real-login|hot-reload|cli|faq)$'
+        activeMatch: '^/(getting-started|features|vs-miniprogram-automator|uni-app|setup|devtools-login|real-login|hot-reload|cli|faq)$'
       },
       { text: '测试', link: '/testing', activeMatch: '^/(testing|ci|test-api)$' },
       {
@@ -150,7 +150,7 @@ export default defineConfig({
         text: '使用',
         items: [
           { text: '启动前准备（setup）', link: '/setup' },
-          { text: '真实登录', link: '/real-login' },
+          { text: '借用开发者工具登录态', link: '/devtools-login' },
           { text: '热更新', link: '/hot-reload' },
           { text: '在 Playwright 中测试', link: '/testing' },
           { text: '在 CI 中运行', link: '/ci' },

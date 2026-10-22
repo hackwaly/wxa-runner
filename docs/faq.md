@@ -55,7 +55,7 @@ uni-app 项目怎么配置测试、断言时要注意什么，见 [uni-app 项�
 
 - 只检查本地有没有 token：用 `storage` 预置 token
 - 调 `wx.login` 拿 code 换 token：用 `network.routes` 拦截换 token 的接口，直接返回 token
-- 后端一定要真实的 code，或者要真实手机号：启动时加 `--real-login`，借本机开发者工具的登录态，见[真实登录](./real-login.md)。
+- 后端一定要真实的 code，或者要真实手机号：启动时加 `--devtools-login`，借本机开发者工具的登录态，见[借用开发者工具登录态](./devtools-login.md)。
   开发者 ticket 很快过期，CI 里用前两种
 
 写法见 setup 的[跳过登录](./setup.md#跳过登录)。
@@ -97,6 +97,6 @@ await miniProgram.route('GET **/api/feed', { body: { list: [] } });
 
 ## 支持插件、Worker、蓝牙吗？
 
-Worker 支持，但 Worker 里不能用同步接口和网络请求。插件页面支持，要加 `--real-login`，见[插件](./real-login.md#插件)；
+Worker 支持，但 Worker 里不能用同步接口和网络请求。插件页面支持，要加 `--devtools-login`，见[插件](./devtools-login.md#插件)；
 插件的自定义组件和 `requirePlugin` 暂不支持（[#56](https://github.com/open-wxa/wxa-runner/issues/56)）。蓝牙不支持，其他不支持的能力见[已知限制](./features.md#已知限制)。
 用到这些能力的页面，可以在开发者工具里用 miniprogram-automator 测试。

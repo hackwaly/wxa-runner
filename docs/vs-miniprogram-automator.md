@@ -31,7 +31,7 @@ wxa-runner 不控制开发者工具，而是在普通的 Chrome 里用官方基�
 | 写测试 | 自己的 API（`miniProgram`、`Page`、`Element`），搭配任意 Node.js 测试框架；Python 有官方的 Minium | Playwright 的 locator 和断言，加上 `miniProgram` fixture；不用 Playwright 时调用[测试 API](./test-api.md) |
 | mock 原生 API | `mockWxMethod` | [`mock`](./testing.md#mock-原生-api、拦截请求)，可以写在 setup 里，也可以写在用例里 |
 | 网络请求 | 用 `mockWxMethod` 替换 `wx.request` 的结果 | 按 URL 规则拦截 `wx.request`，记录发出的请求，可以断言请求体 |
-| 插件 | 支持，有 `callPluginWxMethod`、`mockPluginWxMethod` | 只支持插件页面，要加 `--real-login` |
+| 插件 | 支持，有 `callPluginWxMethod`、`mockPluginWxMethod` | 只支持插件页面，要加 `--devtools-login` |
 | 截图 | `screenshot()`，只在开发者工具的模拟器里可用 | Playwright 的截图、录屏、trace |
 | 调试 | 开发者工具的调试器 | Chrome DevTools |
 

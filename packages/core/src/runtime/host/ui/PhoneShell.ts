@@ -401,7 +401,7 @@ export class PhoneShell {
   }
 
   /**
-   * 在手机外面提示 wxa-runner 自身的问题（如真实登录失败），不混进小程序的界面。
+   * 在手机外面提示 wxa-runner 自身的问题（如借用开发者工具登录态失败），不混进小程序的界面。
    * 同一时间只显示一条，新的替换旧的：业务代码反复重试时不会堆满屏幕
    */
   showNotice(title: string, message: string) {

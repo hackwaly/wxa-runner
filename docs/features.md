@@ -15,7 +15,7 @@ wxa-runner 用的是和开发者工具同一套官方基础库，渲染、组件
 | 自动化测试 | Playwright 直接操作页面，Linux、CI 上也能跑 | 要远程控制开发者工具，只能在 Windows、macOS 上运行 |
 | 需要安装开发者工具 | 不需要，没装时用内置的基础库和编译器 | — |
 | 预览、上传、真机调试 | 不支持 | 支持 |
-| 插件 | 支持插件页面，要加 [`--real-login`](./real-login.md#插件) | 支持 |
+| 插件 | 支持插件页面，要加 [`--devtools-login`](./devtools-login.md#插件) | 支持 |
 
 适合本地开发调试、跑自动化测试；发布相关的事情仍然在开发者工具里做。
 
@@ -40,7 +40,7 @@ wxa-runner 用的是和开发者工具同一套官方基础库，渲染、组件
 | 媒体 | chooseImage、chooseMedia（图片和视频）、chooseVideo 由浏览器选文件，previewImage、getImageInfo，保存到相册即下载；InnerAudioContext 播放音频 |
 | 网络 | request、上传、下载由开发服务器转发（没有跨域限制），WebSocket |
 | 存储 | Storage、FileSystemManager 基本操作 |
-| 登录、用户信息等开放接口 | 返回固定的假数据，支付、扫码默认失败，[默认返回什么](./setup.md#mock)。可以用 setup mock，或用[真实登录](./real-login.md)拿真实的 code。服务市场 `wx.serviceMarket` 要加 `--real-login` 才能调用，见[服务市场](./real-login.md#服务市场) |
+| 登录、用户信息等开放接口 | 返回固定的假数据，支付、扫码默认失败，[默认返回什么](./setup.md#mock)。可以用 setup mock，或用[借用开发者工具登录态](./devtools-login.md)拿真实的 code。服务市场 `wx.serviceMarket` 要加 `--devtools-login` 才能调用，见[服务市场](./devtools-login.md#服务市场) |
 
 基础库已验证 2.32.3、3.3.4、3.5.8、3.7.0；3.7.1 和 3.8.8 上全部测试也通过，但默认不会选用，见下文。
 
@@ -52,7 +52,7 @@ wxa-runner 用的是和开发者工具同一套官方基础库，渲染、组件
 - **设备能力**：不支持蓝牙等设备能力
 - **地图**：MapContext 的 toScreenLocation、fromScreenLocation、地面覆盖物等方法在基础库的网页实现里没有，调用后不会回调
   （详见[设计文档](https://github.com/open-wxa/wxa-runner/blob/main/PROJECT_DESIGN.md#原生组件)）
-- **插件**：只支持插件页面，要加 `--real-login`；插件的自定义组件和 `requirePlugin` 暂不支持（[#56](https://github.com/open-wxa/wxa-runner/issues/56)）
+- **插件**：只支持插件页面，要加 `--devtools-login`；插件的自定义组件和 `requirePlugin` 暂不支持（[#56](https://github.com/open-wxa/wxa-runner/issues/56)）
 - **Worker 里的接口**：只能用异步接口，如 FileSystemManager 的 readFile、writeFile。同步接口（readFileSync 等）调用时报错；
   request、downloadFile、uploadFile、connectSocket 也不能用，基础库要同步拿到它们的任务编号。Worker 和页面之间只能异步通信，
   同步等结果要求整个页面跨源隔离，跨域的图片等资源会因此加载不了

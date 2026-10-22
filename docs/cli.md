@@ -1,5 +1,5 @@
 ---
-description: wxa-runner 命令行：dev 启动开发服务器的选项（端口、基础库版本、setup、真实登录），baselib 管理基础库，以及 WXA_BASELIB 等环境变量。
+description: wxa-runner 命令行：dev 启动开发服务器的选项（端口、基础库版本、setup、借用开发者工具登录态），baselib 管理基础库，以及 WXA_BASELIB 等环境变量。
 ---
 
 # 命令与环境变量
@@ -29,7 +29,7 @@ wxa-runner dev <项目目录> [选项]
 | `--no-setup` | | 不执行 setup 文件 |
 | `--no-watch` | | 不监听文件变化、不热更新，运行环境与真机一致。跑测试时用 |
 | `-o, --open` | | 启动后打开浏览器 |
-| `--real-login` | | 用本机开发者工具的登录态获取真实的 `wx.login` code 和手机号，真实调用服务市场 `wx.serviceMarket`，下载插件，见[真实登录](./real-login.md) |
+| `--devtools-login` | | 借本机开发者工具的登录态访问微信后台：真实的 `wx.login` code 和手机号、服务市场 `wx.serviceMarket`、插件，见[借用开发者工具登录态](./devtools-login.md) |
 
 常见用法：
 
@@ -70,6 +70,6 @@ wxa-runner dev . --no-watch --port 3000
 | `WXA_DEVTOOLS_PATH` | 开发者工具不在默认位置时，指定安装目录（如 macOS 上的 `.app` 目录），新旧版本都可以 |
 | `WXA_VENDOR_DIR` | 指定基础库目录（开发者工具的 `WeappVendor`） |
 | `WXA_WCC` / `WXA_WCSC` | 直接指定 WXML / WXSS 编译器，优先于开发者工具和 miniprogram-compiler |
-| `WECHAT_DEV_TICKET` | `--real-login` 使用的开发者 ticket，优先于开发者工具的登录态 |
-| `WECHAT_DEVTOOLS_CLI_TOKEN` | 开发者工具设置了「CLI 访问令牌」时设成它：`--real-login` 调用的开发者工具命令行从这里读取令牌 |
+| `WECHAT_DEV_TICKET` | `--devtools-login` 使用的开发者 ticket，优先于开发者工具的登录态 |
+| `WECHAT_DEVTOOLS_CLI_TOKEN` | 开发者工具设置了「CLI 访问令牌」时设成它：`--devtools-login` 调用的开发者工具命令行从这里读取令牌 |
 | `WXA_*` | 所有 `WXA_` 开头的变量都传给 setup 文件，见 [setup 的环境变量](./setup.md#不把-token-写死在文件里) |

@@ -555,8 +555,8 @@ export class Host implements HostApi {
         emitToWebview: (webviewId, event, data) => this.emitToWebview(webviewId, event, data)
       }),
       ...createMiscApis(this.info.appid, {
-        realLogin: this.info.realLogin,
-        onRealLoginFail: (api, reason) => this.shell.showNotice(`wx.${api} 真实登录失败`, reason)
+        devtoolsLogin: this.info.devtoolsLogin,
+        onDevtoolsLoginFail: (api, reason) => this.shell.showNotice(`wx.${api} 借用开发者工具登录态失败`, reason)
       })
     });
   }

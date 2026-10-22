@@ -1,5 +1,5 @@
 /**
- * 真实登录（--real-login）：用本机开发者工具的登录态，向微信换取真实的 wx.login code 和手机号
+ * --devtools-login 的接口：借本机开发者工具的登录态，向微信换取真实的 wx.login code 和手机号，转发服务市场和插件的请求
  *
  *   POST /login         → { code }
  *   POST /phone-number  → { data, encryptedData, iv }，code 在 data（JSON 字符串）里，与基础库的约定一致
@@ -27,7 +27,7 @@ const FORWARDED_WX_DATA_APIS = ['webapi_servicemarket_jsapi_comm'];
 /**
  * @param findTicket 每次请求都重新查找：开发者工具重新登录、切换账号后不用重启服务器
  */
-export function realLoginRouter(appid: string, findTicket: FindTicket = findDeveloperTicket): Router {
+export function devtoolsLoginRouter(appid: string, findTicket: FindTicket = findDeveloperTicket): Router {
   const wechat = new WechatDevClient(appid, findTicket);
   const router = express.Router();
   router.use(onlyLoopback);
@@ -82,7 +82,7 @@ export function realLoginRouter(appid: string, findTicket: FindTicket = findDeve
 function onlyLoopback(req: Request, res: Response, next: NextFunction) {
   // req.hostname 去掉端口时能正确处理 IPv6 的 [::1]:3000
   if (!LOOPBACK_ADDRESSES.includes(req.socket.remoteAddress || '') || !LOOPBACK_HOSTS.includes(req.hostname)) {
-    res.status(403).json({ error: '真实登录接口只允许本机访问' });
+    res.status(403).json({ error: '开发者登录态接口只允许本机访问' });
     return;
   }
   next();

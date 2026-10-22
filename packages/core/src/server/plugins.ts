@@ -2,7 +2,7 @@
  * 小程序插件的代码
  *
  * 插件代码不在项目里，同开发者工具：开发服务器带着开发者 ticket 向微信下载（wxa-dev/getplugincode），
- * 只放在内存里，同一个插件版本下载一次。下载要用开发者的登录态，所以只在开启 --real-login 时进行；
+ * 只放在内存里，同一个插件版本下载一次。下载要用开发者的登录态，所以只在开启 --devtools-login 时进行；
  * 小程序的 appid 要已在管理后台添加了这个插件，并经插件开发者通过。
  *
  * 下载到的是 .wxvpkg 格式的包，里面是编译好的产物：
@@ -51,11 +51,11 @@ export class PluginStore {
    * 各自去下载的话，下载失败时每个请求都会重试，结果还可能前后不一，页面列表和逻辑层对不上
    */
   private selection: Promise<PluginCode[]> | null = null;
-  /** 没开 --real-login 的提示每个插件只说一次 */
+  /** 没开 --devtools-login 的提示每个插件只说一次 */
   private readonly warned = new Set<string>();
 
   /**
-   * @param wechat 开启 --real-login 时才有，没有时不下载插件
+   * @param wechat 开启 --devtools-login 时才有，没有时不下载插件
    */
   constructor(
     private readonly wechat: WechatDevClient | null,
@@ -86,7 +86,7 @@ export class PluginStore {
   private async load(alias: string, provider: string, version: string): Promise<PluginCode | null> {
     const label = `插件 ${alias}（${provider}@${version}）`;
     if (!this.wechat) {
-      this.warnOnce(label, `[wxa-runner] ${label} 的代码要用开发者的登录态向微信下载，启动时加 --real-login`);
+      this.warnOnce(label, `[wxa-runner] ${label} 的代码要用开发者的登录态向微信下载，启动时加 --devtools-login`);
       return null;
     }
 

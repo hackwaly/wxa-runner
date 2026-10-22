@@ -51,7 +51,8 @@ export interface AppInfo {
   wxConfig: Record<string, any>;
   pages: string[];
   device: DeviceProfile;
-  realLogin?: boolean;
+  /** 开启了 --devtools-login */
+  devtoolsLogin?: boolean;
   buildError?: string;
   /** 配置了 setup 文件时存在；error 是 setup 的编译错误 */
   setup?: { env: Record<string, string>; error?: string };

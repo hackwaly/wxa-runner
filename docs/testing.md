@@ -253,7 +253,7 @@ test('上传头像', async ({ miniProgram, page }) => {
 | 选项 | 默认值 | 作用 |
 | --- | --- | --- |
 | `wxaProject` | `'.'` | 小程序目录，相对配置文件 |
-| `wxaServerOptions` | `{}` | 开发服务器的其他参数，如 `setup`、`baseLibVersion`、`realLogin`。路径相对配置文件 |
+| `wxaServerOptions` | `{}` | 开发服务器的其他参数，如 `setup`、`baseLibVersion`、`devtoolsLogin`。路径相对配置文件 |
 | `wxaCheckErrors` | `true` | 用例结束时[检查运行时错误](#检查运行时错误) |
 
 - 每个 worker（Playwright 并行运行用例的进程）启动一个开发服务器，小程序只编译一次；每个用例用一个新的浏览器上下文，存储、页面栈互不影响

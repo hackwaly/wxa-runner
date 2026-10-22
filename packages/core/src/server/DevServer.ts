@@ -14,7 +14,7 @@
  *   /__wxa__/proxy?url=        网络代理
  *   /__wxa__/tmp               临时文件：POST ?type=png 保存，返回可直接访问的地址（GET 支持分段请求）；对该地址 HEAD 查大小、DELETE 删除
  *   /__wxa__/region/<kind>     地区选择器用的行政区划数据（districts / streets），取自本机开发者工具
- *   /__wxa__/api/*             真实登录（--real-login）：wx.login 的 code、手机号，服务市场转发，只允许本机访问
+ *   /__wxa__/api/*             --devtools-login：wx.login 的 code、手机号，服务市场、插件的请求转发，只允许本机访问
  *   /__wxa__/ws                文件变化通知：热更新（hot）或整页刷新（reload）
  *   其余路径                    小程序目录下的静态资源
  */
@@ -35,7 +35,7 @@ import { handleProxy } from './proxy';
 import { planHotUpdate } from './hmr';
 import { developerTicketSource, TicketSource } from './developerTicket';
 import { AppBuild, findPluginPage, PluginStore } from './plugins';
-import { realLoginRouter } from './realLogin';
+import { devtoolsLoginRouter } from './devtoolsLogin';
 import { requireUsableTicket, WechatDevClient } from './wechatDev';
 import { bundleSetup, collectSetupEnv, findSetupFile } from './setup';
 import { ProjectWatcher, watchProject } from './watcher';
@@ -57,7 +57,12 @@ export interface DevServerOptions {
   setup?: string | false;
   /** 浏览器端运行时（host.js / frame.js）所在目录，默认取构建产物 */
   runtimeDir?: string;
-  /** 使用本机微信开发者工具登录态获取真实 code 和手机号 */
+  /**
+   * 借本机微信开发者工具的登录态访问微信后台：真实的 wx.login code 和手机号、服务市场、插件。
+   * 要先登录开发者工具，会真实请求微信
+   */
+  devtoolsLogin?: boolean;
+  /** @deprecated 改名为 devtoolsLogin */
   realLogin?: boolean;
   logger?: Pick<Console, 'log' | 'warn' | 'error'>;
 }
@@ -89,7 +94,8 @@ export class DevServer {
   private address = '';
   /** 运行时生成的临时文件（canvas 导出、拍照等），随服务器进程存在 */
   private readonly tempFiles = new Map<string, Buffer>();
-  /** 开启 --real-login 时才有 */
+  private readonly devtoolsLogin: boolean;
+  /** 开启 --devtools-login 时才有 */
   private readonly ticketSource: TicketSource | null;
   private readonly plugins: PluginStore;
 
@@ -100,7 +106,11 @@ export class DevServer {
     if (!this.baseLib.compatible) {
       this.logger.warn(`[wxa-runner] 基础库 ${this.baseLib.version} 高于已验证的版本范围，可能无法正常运行`);
     }
-    this.ticketSource = options.realLogin ? developerTicketSource(this.project.projectPath, this.logger) : null;
+    if (options.realLogin !== undefined && options.devtoolsLogin === undefined) {
+      this.logger.warn('[wxa-runner] realLogin（--real-login）已改名为 devtoolsLogin（--devtools-login），旧名以后会移除');
+    }
+    this.devtoolsLogin = (options.devtoolsLogin ?? options.realLogin) === true;
+    this.ticketSource = this.devtoolsLogin ? developerTicketSource(this.project.projectPath, this.logger) : null;
     this.plugins = new PluginStore(this.ticketSource && new WechatDevClient(this.project.appid, this.ticketSource), this.logger);
     this.device = { ...DEFAULT_DEVICE, ...options.device };
     this.builder = new AppBuilder(this.project);
@@ -146,7 +156,7 @@ export class DevServer {
     // 启动时先取一次：新版开发者工具要先为项目开启自动化接口，第一次 wx.login 就不用等；不可用时在终端提示原因
     this.ticketSource?.()
       .then(requireUsableTicket)
-      .catch(error => this.logger.warn(`[wxa-runner] 真实登录暂不可用：${error.message}`));
+      .catch(error => this.logger.warn(`[wxa-runner] 开发者工具的登录态暂不可用（--devtools-login）：${error.message}`));
     return this.address;
   }
 
@@ -179,7 +189,7 @@ export class DevServer {
 
     app.get('/__wxa__/app-info.json', async (_req, res) => {
       noStore(res);
-      const base = { appid: this.project.appid, baseLibVersion: this.baseLib.version, device: this.device, realLogin: this.options.realLogin === true };
+      const base = { appid: this.project.appid, baseLibVersion: this.baseLib.version, device: this.device, devtoolsLogin: this.devtoolsLogin };
       try {
         // 宿主打开小程序时先取 app-info：这时重新决定用哪些插件，之后的请求都按这个结果
         const build = await this.plugins.refresh(await this.builder.build());
@@ -345,7 +355,7 @@ export class DevServer {
       res.status(this.tempFiles.delete(req.params.name) ? 204 : 404).end();
     });
 
-    if (this.ticketSource) app.use('/__wxa__/api', realLoginRouter(this.project.appid, this.ticketSource));
+    if (this.ticketSource) app.use('/__wxa__/api', devtoolsLoginRouter(this.project.appid, this.ticketSource));
 
     // 渲染层页面路径下的相对资源（如 ../../images/a.png）
     app.use('/__wxa__/webview', express.static(root));

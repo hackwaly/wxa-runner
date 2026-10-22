@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { Command } = require('commander');
+const { Command, Option } = require('commander');
 const chalk = require('chalk');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -22,7 +22,9 @@ program
   .option('--no-setup', '不执行 setup 文件')
   .option('--no-watch', '不监听文件变化')
   .option('-o, --open', '启动后打开浏览器')
-  .option('--real-login', '使用本机微信开发者工具登录态获取真实 code 和手机号')
+  .option('--devtools-login', '借本机微信开发者工具的登录态访问微信后台：真实的 code 和手机号、服务市场、插件')
+  // 旧名，开发服务器会提示改用 --devtools-login
+  .addOption(new Option('--real-login').hideHelp())
   .action(async (projectPath, options) => {
     const { DevServer } = require('@open-wxa/wxa-runner-core');
 
@@ -34,6 +36,7 @@ program
         baseLibVersion: options.baselib,
         setup: options.setup,
         watch: options.watch,
+        devtoolsLogin: options.devtoolsLogin,
         realLogin: options.realLogin
       });
       const url = await server.start();

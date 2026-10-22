@@ -77,11 +77,11 @@ export default defineSetup({
 });
 ```
 
-不用处理 `wx.login`：没加 `--real-login` 时，它会成功返回一个假 code（`wxa_mock_code_` 开头），真实后端不认。
+不用处理 `wx.login`：没加 `--devtools-login` 时，它会成功返回一个假 code（`wxa_mock_code_` 开头），真实后端不认。
 但换 token 的请求已经被拦截，后端收不到这个 code，所以没关系。
 
 想让请求真的发到测试环境后端，就要让 `wx.login` 返回后端认的 code：测试后端约定了固定的 code 时，
-用 `mock: { login: { code: 'test_code' } }`；否则用[真实登录](./real-login.md)。
+用 `mock: { login: { code: 'test_code' } }`；否则用[借用开发者工具登录态](./devtools-login.md)。
 
 **token 要现场向测试后端申请**：在 `run` 里申请，再写进存储。
 
@@ -96,7 +96,7 @@ export default defineSetup({
 });
 ```
 
-**后端要用真实的 code 换 session，或者要真实手机号**：setup 做不到，启动时加 `--real-login`，见[真实登录](./real-login.md)。
+**后端要用真实的 code 换 session，或者要真实手机号**：setup 做不到，启动时加 `--devtools-login`，见[借用开发者工具登录态](./devtools-login.md)。
 
 ### 不把 token 写死在文件里
 
@@ -198,8 +198,8 @@ export default defineSetup({
 
 | API | 不 mock 时 |
 | --- | --- |
-| `login` | 成功，code 是假的（`wxa_mock_code_` 开头），真实后端不认。加 `--real-login` 时是真实的 code |
-| 手机号按钮（`open-type="getPhoneNumber"`） | 成功，手机号 code 是假的。加 `--real-login` 时是真实的 |
+| `login` | 成功，code 是假的（`wxa_mock_code_` 开头），真实后端不认。加 `--devtools-login` 时是真实的 code |
+| 手机号按钮（`open-type="getPhoneNumber"`） | 成功，手机号 code 是假的。加 `--devtools-login` 时是真实的 |
 | `checkSession`、`authorize` | 成功 |
 | `getSetting` | 已授权用户信息（`scope.userInfo`）和定位（`scope.userLocation`） |
 | `getUserInfo`、`getUserProfile` | 昵称为 `wxa-runner` 的用户 |
