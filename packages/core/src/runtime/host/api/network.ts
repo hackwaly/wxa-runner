@@ -231,13 +231,18 @@ export function createNetworkApis(options: NetworkApiOptions): Record<string, Ap
 const rejectBaseLib: ApiHandler = (_args, { api }) => fail(api, '基础库内部的网络请求，wxa-runner 不发出');
 
 /**
- * 小程序的请求交给 forApp；基础库自己的网络请求（数据上报、配置拉取等）默认直接按失败返回：不发往网络，也不记入请求记录
+ * 小程序（含插件）的请求交给 forApp；基础库自己的网络请求（数据上报、配置拉取等）默认直接按失败返回：不发往网络，也不记入请求记录
  *
  * 它们连的是微信后台，与被测的小程序无关，测试和 CI 里不该因此产生对外请求。基础库通过
- * _requestSkipCheckDomain 一类内部接口发出，带 __skipDomainCheck__ 标记；小程序的 wx.request 不带
+ * _requestSkipCheckDomain 一类内部接口发出，带 __skipDomainCheck__ 标记；小程序的 wx.request 不带。
+ * 插件的请求也带这个标记（基础库已按插件的域名校验过），但同时带着插件签名头 X-WECHAT-HOSTSIGN
  */
 function byCaller(forApp: ApiHandler, forBaseLib = rejectBaseLib): ApiHandler {
-  return (args, context) => (args?.__skipDomainCheck__ === true ? forBaseLib(args, context) : forApp(args, context));
+  return (args, context) => (args?.__skipDomainCheck__ === true && !hasPluginSign(args) ? forBaseLib(args, context) : forApp(args, context));
+}
+
+function hasPluginSign(args: any): boolean {
+  return Object.keys(args.header || {}).some(name => name.toLowerCase() === 'x-wechat-hostsign');
 }
 
 /**

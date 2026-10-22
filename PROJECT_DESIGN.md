@@ -97,6 +97,7 @@ wxa-runner/
 │   │       │   ├── proxy.ts           # wx.request 等的转发代理
 │   │       │   ├── setup.ts           # 查找、打包 setup 文件，收集 WXA_ 环境变量
 │   │       │   ├── realLogin.ts       # --real-login 的真实登录接口
+│   │       │   ├── plugins.ts         # 插件：借开发者登录态下载插件代码，插件页面并入小程序
 │   │       │   └── developerTicket.ts # 真实登录的 ticket：新版开发者工具经自动化接口实时获取
 │   │       └── runtime/               # 浏览器端（打包为 dist/runtime/host.js、frame.js、worker.js）
 │   │           ├── frame.ts           # 注入 iframe：全局变量、WeixinJSBridge、设备尺寸、触摸模拟
@@ -251,6 +252,27 @@ document.dispatchEvent(new CustomEvent("generateFuncReady", {
 
 逻辑层的模板（`service-templates.js`）、渲染层的模板（`page-templates.js`）和样式（`page-styles.js`）也能单独取到，热更新时分别下发。
 样式和模板里的 `env(safe-area-inset-*)` 改写成 CSS 变量（`rewriteSafeAreaInsets`）。
+
+### 插件（server/plugins.ts）
+
+插件代码不在项目里。同开发者工具：开发服务器带着开发者 ticket 向微信下载 `app.json` 声明的插件（`wxa-dev/getplugincode`，
+body 是插件 appid 和版本），只放在内存里，同一个插件版本下载一次。要用开发者的登录态，所以只在 `--real-login` 时下载；
+下载不了时在终端说明原因，小程序自己的页面照常可用。
+
+下载到的是 `.wxvpkg` 格式（同基础库）的编译产物，wxa-runner 不用再编译：
+
+| 文件 | 内容 | 怎么用 |
+| --- | --- | --- |
+| `plugin.json` | 插件页面表（如 `__plugin__/<插件 appid>/pages/index/index`）和每个页面的 window 配置 | 并入 app-info 的 `pages` 和 `__wxConfig.page` |
+| `appservice.js` | `definePlugin(...)` 包着插件的 `$gwx_<插件 appid>`、`__wxAppCode__`、各模块的 `define`，最后自己 `requirePlugin` 初始化 | 逻辑层在业务代码之前加载 |
+| `pageframe.js` | 插件的模板函数和样式（自带 `setCssToHead`） | 插件页面的渲染层加载，不加载小程序的 page-frame.js |
+| `pages/x/x.html` | 注入样式、取模板、派发 `generateFuncReady` 的片段 | 原样放进插件页面的 body |
+| `static/…` | 图片等 | 基础库把插件里的相对路径和 `/` 开头的路径都改写成站点根下的 `/__plugin__/<插件 appid>/…` |
+
+跳转由基础库完成：`plugin://别名/页面名` 解析成 `__plugin__/<插件 appid>/pages/…` 后调原生路由，宿主当普通页面打开。
+基础库启动时还会调原生的 `verifyPlugin`（插件能访问的域名和签名）和 `batchGetContact`（插件信息），插件里的网络请求要等拿到这两样才发出，
+开发服务器同开发者工具转发给 `wxa-dev-logic/verifyplugin`、`batchgetcontact`。插件的请求和基础库自己的请求一样带 `__skipDomainCheck__`，
+但多一个签名头 `X-WECHAT-HOSTSIGN`，宿主据此当作小程序的请求发出（`api/network.ts`）。
 
 ---
 

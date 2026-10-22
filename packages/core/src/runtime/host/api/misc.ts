@@ -53,6 +53,12 @@ export function createMiscApis(appid: string, options?: MiscApiOptions): Record<
     getAppContact: (args, { api }) =>
       args.keyPath === 'WxaAppInfo.Network.BizDomain' ? bizDomainUnavailable(api) : ok(api),
 
+    // 插件：基础库启动时校验插件、取插件信息，插件里的网络请求要等拿到这两样才发出。插件代码也只在 --real-login 时下载
+    ...(options?.realLogin ? {
+      verifyPlugin: (async (args, { api }) => ok(api, await realLogin(api, '/__wxa__/api/verify-plugin', { data: args.data }))) as ApiHandler,
+      batchGetContact: (async (args, { api }) => ok(api, await realLogin(api, '/__wxa__/api/batch-get-contact', { appIds: args.appIds }))) as ApiHandler
+    } : {}),
+
     // 真实登录失败时明确返回 fail，不退回假数据：配置或登录态的问题要让开发者马上发现
     login: options?.realLogin
       ? async (_args, { api }) => ok(api, { code: (await realLogin(api, '/__wxa__/api/login')).code })

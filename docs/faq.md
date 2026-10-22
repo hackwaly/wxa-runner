@@ -14,13 +14,13 @@ wxa-runner 是微信小程序的 E2E 测试和调试工具：在普通的 Chrome
 
 ## 能替代微信开发者工具吗？
 
-不能。预览、上传、真机调试仍然要用开发者工具，插件也暂不支持。
+不能。预览、上传、真机调试仍然要用开发者工具，插件的自定义组件也暂不支持。
 wxa-runner 用在本地开发调试和跑自动化测试上，区别见[功能与限制](./features.md#和微信开发者工具的区别)。
 
 ## 和 miniprogram-automator 有什么区别？
 
 miniprogram-automator 是微信官方的自动化 SDK，控制开发者工具的模拟器或真机，要有装了开发者工具的 Windows 或 macOS 机器。
-wxa-runner 在浏览器里运行，Linux CI 上不需要开发者工具，但不支持真机和插件。
+wxa-runner 在浏览器里运行，Linux CI 上不需要开发者工具，但不支持真机，插件也只支持插件页面。
 
 两者适用的场景不同，也可以一起用，见[和 miniprogram-automator 对比](./vs-miniprogram-automator.md)。
 
@@ -97,5 +97,6 @@ await miniProgram.route('GET **/api/feed', { body: { list: [] } });
 
 ## 支持插件、Worker、蓝牙吗？
 
-Worker 支持，但 Worker 里不能用同步接口和网络请求。插件、蓝牙不支持，插件见 [#56](https://github.com/open-wxa/wxa-runner/issues/56)，
-其他不支持的能力见[已知限制](./features.md#已知限制)。用到这些能力的页面，可以在开发者工具里用 miniprogram-automator 测试。
+Worker 支持，但 Worker 里不能用同步接口和网络请求。插件页面支持，要加 `--real-login`，见[插件](./real-login.md#插件)；
+插件的自定义组件和 `requirePlugin` 暂不支持（[#56](https://github.com/open-wxa/wxa-runner/issues/56)）。蓝牙不支持，其他不支持的能力见[已知限制](./features.md#已知限制)。
+用到这些能力的页面，可以在开发者工具里用 miniprogram-automator 测试。

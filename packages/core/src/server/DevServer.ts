@@ -26,14 +26,15 @@ import path from 'path';
 import express, { Express, NextFunction, Request, Response } from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import { readRegionData, resolveBaseLib, ResolvedBaseLib, usesIsolatedContext } from '@open-wxa/wxa-runner-extractor';
-import { AppBuilder, BuildResult } from '../project/AppBuilder';
+import { AppBuilder } from '../project/AppBuilder';
 import { MiniProgram } from '../project/MiniProgram';
 import type { AppInfo, DeviceProfile } from '../runtime/types';
-import { appserviceHtml, hostHtml, subcontextHtml, webviewHtml, workerScript } from './html';
+import { appserviceHtml, hostHtml, pluginWebviewHtml, subcontextHtml, webviewHtml, workerScript } from './html';
 import { ignoreListSourceMap } from './ignoreList';
 import { handleProxy } from './proxy';
 import { planHotUpdate } from './hmr';
 import { developerTicketSource, TicketSource } from './developerTicket';
+import { AppBuild, findPluginPage, PluginStore } from './plugins';
 import { realLoginRouter, requireUsableTicket } from './realLogin';
 import { bundleSetup, collectSetupEnv, findSetupFile } from './setup';
 import { ProjectWatcher, watchProject } from './watcher';
@@ -89,6 +90,7 @@ export class DevServer {
   private readonly tempFiles = new Map<string, Buffer>();
   /** 开启 --real-login 时才有 */
   private readonly ticketSource: TicketSource | null;
+  private readonly plugins: PluginStore;
 
   constructor(private readonly options: DevServerOptions) {
     this.logger = options.logger || console;
@@ -98,6 +100,7 @@ export class DevServer {
       this.logger.warn(`[wxa-runner] 基础库 ${this.baseLib.version} 高于已验证的版本范围，可能无法正常运行`);
     }
     this.ticketSource = options.realLogin ? developerTicketSource(this.project.projectPath, this.logger) : null;
+    this.plugins = new PluginStore(this.project.appid, this.ticketSource, this.logger);
     this.device = { ...DEFAULT_DEVICE, ...options.device };
     this.builder = new AppBuilder(this.project);
     this.setupFile = resolveSetupFile(options.setup, this.project.projectPath);
@@ -177,7 +180,7 @@ export class DevServer {
       noStore(res);
       const base = { appid: this.project.appid, baseLibVersion: this.baseLib.version, device: this.device, realLogin: this.options.realLogin === true };
       try {
-        const build = await this.builder.build();
+        const build = await this.currentBuild();
         const info: AppInfo = { ...base, version: build.version, wxConfig: build.wxConfig, pages: build.pages };
         if (this.setupFile) info.setup = await this.setupInfo(this.setupFile);
         res.json(info);
@@ -219,7 +222,24 @@ export class DevServer {
     app.get(/^\/__wxa__\/webview\/(.+)\.html$/, this.withBuild((build, req, res, next) => {
       const pagePath = decodeURIComponent(req.params[0]);
       if (!build.pages.includes(pagePath)) return next();
-      res.type('html').send(webviewHtml(build, pagePath, Number(req.query.id), { hot: this.hotEnabled }));
+      const pluginPage = findPluginPage(build, pagePath);
+      res.type('html').send(pluginPage
+        ? pluginWebviewHtml(build, pluginPage.plugin, pluginPage.innerPath, pagePath, Number(req.query.id))
+        : webviewHtml(build, pagePath, Number(req.query.id), { hot: this.hotEnabled }));
+    }));
+
+    // 插件的逻辑层、渲染层代码
+    app.get('/__wxa__/plugin/:provider/:version/:file(appservice.js|pageframe.js)', this.withBuild((build, req, res, next) => {
+      const { provider, version, file } = req.params;
+      const code = build.plugins.find(plugin => plugin.provider === provider && plugin.version === version)?.files.get(`/${file}`);
+      if (!code) return next();
+      res.type('js').send(code);
+    }));
+    // 插件页面里的图片等资源：基础库把插件里的相对路径和 / 开头的路径都改写成站点根下的 /__plugin__/<插件 appid>/…
+    app.get(/^\/__plugin__\/([^/]+)(\/.+)$/, this.withBuild((build, req, res, next) => {
+      const file = build.plugins.find(plugin => plugin.provider === req.params[0])?.files.get(decodeURIComponent(req.params[1]));
+      if (!file) return next();
+      res.type(path.extname(req.params[1]) || 'application/octet-stream').send(file);
     }));
 
     app.get(/^\/__wxa__\/module\/(.+\.js)$/, this.withBuild((build, req, res) => {
@@ -347,13 +367,18 @@ export class DevServer {
     }
   }
 
+  /** 构建结果并入用到的插件 */
+  private async currentBuild(): Promise<AppBuild> {
+    return this.plugins.apply(await this.builder.build());
+  }
+
   /** 需要构建结果的路由；构建失败时返回错误文本 */
-  private withBuild(handler: (build: BuildResult, req: Request, res: Response, next: NextFunction) => void) {
+  private withBuild(handler: (build: AppBuild, req: Request, res: Response, next: NextFunction) => void) {
     return async (req: Request, res: Response, next: NextFunction) => {
       res.setHeader('Cache-Control', 'no-store');
-      let build: BuildResult;
+      let build: AppBuild;
       try {
-        build = await this.builder.build();
+        build = await this.currentBuild();
       } catch (error) {
         res.status(500).type('text').send((error as Error).message);
         return;

@@ -4,6 +4,8 @@
  *   POST /login         → { code }
  *   POST /phone-number  → { data, encryptedData, iv }，code 在 data（JSON 字符串）里，与基础库的约定一致
  *   POST /operate-wx-data  { data } → { data }：wx.serviceMarket 经原生 operateWXData 发出的请求，同开发者工具转发给微信
+ *   POST /verify-plugin    { data } → { data: { list } }：插件校验，list 是每个插件能访问的域名
+ *   POST /batch-get-contact  { appIds } → { contactList }：插件信息
  *
  * 失败时返回 500 和 { error: 原因 }。开发者 ticket 只留在 Node 进程里，接口只接受本机访问，
  * 并校验 Host 头防止 DNS rebinding。
@@ -14,7 +16,7 @@ import { DeveloperTicket, findDeveloperTicket, TICKET_ENV } from '@open-wxa/wxa-
 
 const DEV_LOGIC = 'https://servicewechat.com/wxa-dev-logic';
 /** 开发者工具请求这些接口时带的版本号 */
-const CLIENT_VERSION = '1021810240';
+export const CLIENT_VERSION = '1021810240';
 const UPSTREAM_TIMEOUT = 10_000;
 const LOOPBACK_ADDRESSES = ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
 const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
@@ -109,7 +111,27 @@ export function realLoginRouter(
     return { data: JSON.parse(body.data) };
   }));
 
+  // 插件：基础库启动时校验插件、取插件信息，插件里的网络请求要等拿到这两样才发出
+  router.post('/verify-plugin', express.json(), respond(async req => {
+    // 与开发者工具一致：基础库给的 data 序列化后放在 ext_info 里
+    const body = requireOk(await callDevLogic('verifyplugin', { ext_info: JSON.stringify(req.body?.data || {}) }), '插件校验失败');
+    return { data: { list: body.list || [] } };
+  }));
+
+  router.post('/batch-get-contact', express.json(), respond(async req => {
+    const body = requireOk(await callDevLogic('batchgetcontact', { appid_list: req.body?.appIds || [] }), '获取插件信息失败');
+    const contacts: Array<{ appid: string; plugin_info?: { plugin_list?: unknown[] } }> = body.contact_list || [];
+    return { contactList: contacts.filter(contact => contact.plugin_info).map(contact => ({ appId: contact.appid, plugin_list: contact.plugin_info!.plugin_list })) };
+  }));
+
   return router;
+}
+
+/** @throws 微信返回的结果码不为 0 时，消息是 action 加上结果码和处理办法 */
+function requireOk(body: any, action: string): any {
+  const errcode = body.baseresponse?.errcode;
+  if (errcode !== 0) throw new Error(`${action} ${errcode}: ${body.baseresponse?.errmsg || '未知错误'}${ERROR_HINTS[errcode] ?? ''}`);
+  return body;
 }
 
 function onlyLoopback(req: Request, res: Response, next: NextFunction) {

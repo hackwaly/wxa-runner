@@ -3,6 +3,7 @@
  */
 
 import { BuildResult, toJs } from '../project/AppBuilder';
+import { AppBuild, PluginCode, pluginScriptUrl } from './plugins';
 
 export function hostHtml(): string {
   return `<!DOCTYPE html>
@@ -34,7 +35,7 @@ function enableHotUpdate(hot: boolean): string {
  * 放进子上下文执行（见 runtime/context.ts），逻辑层就绪的通知也由那边发出
  */
 export function appserviceHtml(
-  build: BuildResult,
+  build: AppBuild,
   launch: { path: string; query: Record<string, string> },
   options: { hot: boolean; isolated?: boolean }
 ): string {
@@ -44,11 +45,13 @@ export function appserviceHtml(
     ...(options.isolated ? { isIsolateContext: true } : {})
   };
   const v = build.version;
+  // 插件在业务代码之前注册：业务代码执行时就能 requirePlugin、跳转插件页面
+  const pluginUrls = build.plugins.map(plugin => pluginScriptUrl(plugin, 'appservice.js'));
   const moduleUrls = build.modules.map(id => `/__wxa__/module/${encodeURI(id)}?v=${v}`);
   const bootstrapUrl = `/__wxa__/service-bootstrap.js?v=${v}`;
 
   if (options.isolated) {
-    const scripts = [...moduleUrls, bootstrapUrl];
+    const scripts = [...pluginUrls, ...moduleUrls, bootstrapUrl];
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -62,7 +65,7 @@ export function appserviceHtml(
 </html>`;
   }
 
-  const modules = moduleUrls.map(src => `<script src="${src}"></script>`).join('\n');
+  const modules = [...pluginUrls, ...moduleUrls].map(src => `<script src="${src}"></script>`).join('\n');
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -101,31 +104,14 @@ ${empty ? '' : '<script src="/__baselib__/WASubContext.js"></script>\n'}<script>
 </html>`;
 }
 
-export function webviewHtml(build: BuildResult, pagePath: string, webviewId: number, options: { hot: boolean }): string {
-  const pageConfig = build.wxConfig.page?.[pagePath + '.html'];
-  const window = { ...build.wxConfig.global?.window, ...pageConfig?.window };
-  const wxConfig = { ...build.wxConfig, window };
+export function webviewHtml(build: AppBuild, pagePath: string, webviewId: number, options: { hot: boolean }): string {
   const id = Number(webviewId) || 0;
-
   return `<!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>${escapeHtml(pagePath)}</title>
-<!-- 小程序渲染层的默认字号是 16px；不声明的话会继承浏览器设置里的默认字号。放在最前面，基础库和页面样式都能覆盖它 -->
-<style>html{font-size:16px}</style>
-<!-- 真机的滚动条是不占布局的浮层；桌面浏览器的常规滚动条和自定义 ::-webkit-scrollbar 会挤窄页面，一律隐藏。
-     scrollbar-width 优先于 ::-webkit-scrollbar，页面样式不会再把滚动条加回来 -->
-<style>*{scrollbar-width:none}::-webkit-scrollbar{display:none}</style>
-<!-- 逻辑层建的 2d、webgl 画布搬进 wx-canvas 后铺满它（见 frame.ts 的 moveCanvasesIntoPages）。
-     基础库还会按逻辑层里的布局改它的位置和显隐，这里一律压住；触摸照常交给 wx-canvas 自己的 canvas -->
-<style>.wxa-service-canvas{position:absolute!important;left:0!important;top:0!important;width:100%!important;height:100%!important;visibility:inherit!important;pointer-events:none}</style>
-<script>var __wxConfig = ${toJs(wxConfig)};</script>
-<script src="/__wxa__/runtime/frame.js" data-kind="webview" data-webview-id="${id}"></script>
-<script src="/__baselib__/WAWebview.js"></script>
+${webviewHead(build, pagePath, id)}
 ${enableHotUpdate(options.hot)}<script src="/__wxa__/page-frame.js?v=${build.version}"></script>
-${window.disableScroll ? '<style>body{overflow-y:hidden}</style>' : ''}
+${pageWindow(build, pagePath).disableScroll ? '<style>body{overflow-y:hidden}</style>' : ''}
 </head>
 <body>
 <script>
@@ -168,6 +154,50 @@ importScripts('/__baselib__/WAWorker.js');
 self.console = __wxaConsole;
 importScripts(${modules.map(url => toJs(url)).join(', ')});
 `;
+}
+
+/**
+ * 插件页面：只加载插件自己的模板和样式（pageframe.js），不加载小程序的，与开发者工具一致。
+ * 页面 html 是插件包里编译好的片段，自己注入样式、取模板并派发 generateFuncReady
+ */
+export function pluginWebviewHtml(build: AppBuild, plugin: PluginCode, innerPath: string, pagePath: string, webviewId: number): string {
+  const id = Number(webviewId) || 0;
+  const page = plugin.files.get(`/${innerPath}.html`)?.toString('utf8') ?? `<script>console.error(${JSON.stringify(`[wxa-runner] 插件 ${plugin.alias} 里没有页面 ${innerPath}`)})</script>`;
+  return `<!DOCTYPE html>
+<html>
+<head>
+${webviewHead(build, pagePath, id)}
+<script src="${pluginScriptUrl(plugin, 'pageframe.js')}"></script>
+${pageWindow(build, pagePath).disableScroll ? '<style>body{overflow-y:hidden}</style>' : ''}
+</head>
+<body>
+${page}
+<script>parent.__wxaHost.frameLoaded('webview', ${id});</script>
+</body>
+</html>`;
+}
+
+function pageWindow(build: AppBuild, pagePath: string): Record<string, any> {
+  return { ...build.wxConfig.global?.window, ...build.wxConfig.page?.[pagePath + '.html']?.window };
+}
+
+/** 渲染层公共的 head：页面配置、桥和基础库 */
+function webviewHead(build: AppBuild, pagePath: string, id: number): string {
+  const wxConfig = { ...build.wxConfig, window: pageWindow(build, pagePath) };
+  return `<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>${escapeHtml(pagePath)}</title>
+<!-- 小程序渲染层的默认字号是 16px；不声明的话会继承浏览器设置里的默认字号。放在最前面，基础库和页面样式都能覆盖它 -->
+<style>html{font-size:16px}</style>
+<!-- 真机的滚动条是不占布局的浮层；桌面浏览器的常规滚动条和自定义 ::-webkit-scrollbar 会挤窄页面，一律隐藏。
+     scrollbar-width 优先于 ::-webkit-scrollbar，页面样式不会再把滚动条加回来 -->
+<style>*{scrollbar-width:none}::-webkit-scrollbar{display:none}</style>
+<!-- 逻辑层建的 2d、webgl 画布搬进 wx-canvas 后铺满它（见 frame.ts 的 moveCanvasesIntoPages）。
+     基础库还会按逻辑层里的布局改它的位置和显隐，这里一律压住；触摸照常交给 wx-canvas 自己的 canvas -->
+<style>.wxa-service-canvas{position:absolute!important;left:0!important;top:0!important;width:100%!important;height:100%!important;visibility:inherit!important;pointer-events:none}</style>
+<script>var __wxConfig = ${toJs(wxConfig)};</script>
+<script src="/__wxa__/runtime/frame.js" data-kind="webview" data-webview-id="${id}"></script>
+<script src="/__baselib__/WAWebview.js"></script>`;
 }
 
 function escapeHtml(text: string): string {

@@ -1,5 +1,5 @@
 ---
-description: 用 --real-login 借本机微信开发者工具的登录态，在浏览器里拿到真实的 wx.login code 和手机号、真实调用服务市场 wx.serviceMarket，以及新版开发者工具需要打开的安全设置。
+description: 用 --real-login 借本机微信开发者工具的登录态，在浏览器里拿到真实的 wx.login code 和手机号、真实调用服务市场 wx.serviceMarket、使用插件页面，以及新版开发者工具需要打开的安全设置。
 ---
 
 # 真实登录
@@ -35,3 +35,14 @@ wxa-runner dev ./dist/dev/mp-weixin --real-login
 - 只转发服务市场的请求，基础库发出的其他 `operateWXData` 不会带上开发者的登录态发给微信
 - 需要 3.7.1 及以上的基础库（用 `--baselib` 指定）。3.7.0 及以前的基础库在浏览器里加载不了 `wx.serviceMarket` 所在的 SDK，
   调用时报 `Fatal: unexpected loadSdkSubPackage case`
+
+## 插件
+
+插件的代码不在项目里，和开发者工具一样要用开发者的登录态向微信下载。加了 `--real-login` 时，开发服务器下载 `app.json` 里声明的插件，
+`wx.navigateTo`、`navigator` 组件打开的 `plugin://别名/页面` 和真机一样显示插件页面，插件里的网络请求照常发出。
+
+- 项目的 appid 要已经在小程序管理后台「设置 → 第三方设置 → 插件管理」里添加了插件，并经插件开发者通过，否则终端提示微信返回的原因
+- 没加 `--real-login` 时不下载插件，终端提示加上它；跳转插件页面时报 `page "…" is not found`，小程序自己的页面照常可用
+- 插件代码只放在内存里，同一个插件版本只下载一次，重启开发服务器后重新下载
+- 暂不支持插件的自定义组件（`usingComponents` 里的 `plugin://`）和业务代码里的 `requirePlugin`；分包里声明的插件也还没有下载（[#56](https://github.com/open-wxa/wxa-runner/issues/56)）
+- 测试 API 的 `navigateTo` 等路由方法不认 `plugin://` 地址，要从页面里点击或调用 `wx.navigateTo` 打开插件页面
